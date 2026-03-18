@@ -256,9 +256,7 @@ export default function DashboardPage() {
         '/api/analyze',
         {
           scriptText: scriptText.trim(),
-          language: selectedLanguage,
-          ...(user?.platform && { platform: user.platform }),
-          ...(user?.niche && { niche: user.niche })
+          language: selectedLanguage
         }
       );
       setAnalysis(res.data.data);
@@ -300,8 +298,6 @@ export default function DashboardPage() {
       if (analyzeWithTranscription) {
         formData.append('analyze', 'true');
         formData.append('language', selectedLanguage);
-        if (user?.platform) formData.append('platform', user.platform);
-        if (user?.niche) formData.append('niche', user.niche);
       }
 
       const res = await apiClient.post('/api/transcribe', formData, {
