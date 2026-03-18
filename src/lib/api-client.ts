@@ -6,8 +6,10 @@ import { useAuthStore } from '@/stores/auth.store';
 import { setRefreshTokenCookie, clearAuthCookies } from '@/lib/auth-cookie';
 import type { ApiErrorResponse } from '@/types/auth';
 
+// Route API calls through Next.js rewrite proxy (/backend/*)
+// to avoid cross-origin issues (Safari blocks api.cloutiq.ai from cloutiq.ai)
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
+  baseURL: '/backend',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -90,7 +92,7 @@ apiClient.interceptors.response.use(
 
     try {
       const response = await axios.post(
-        `${apiClient.defaults.baseURL}/auth/refresh`,
+        '/backend/auth/refresh',
         { refreshToken }
       );
 

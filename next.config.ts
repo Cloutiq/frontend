@@ -13,6 +13,16 @@ const baseConfig: NextConfig = {
     ]
   },
   transpilePackages: ['geist'],
+  async rewrites() {
+    const backendUrl =
+      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    return [
+      {
+        source: '/backend/:path*',
+        destination: `${backendUrl}/:path*`
+      }
+    ];
+  },
   async headers() {
     return [
       {
