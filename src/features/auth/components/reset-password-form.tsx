@@ -70,7 +70,8 @@ export function ResetPasswordForm() {
     try {
       await apiClient.post('/auth/reset-password', {
         token,
-        password: data.password
+        password: data.password,
+        confirmPassword: data.confirmPassword
       });
       setDone(true);
     } catch (error) {
