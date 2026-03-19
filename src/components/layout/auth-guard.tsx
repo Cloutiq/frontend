@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { useAuthStore } from '@/stores/auth.store';
@@ -18,15 +18,21 @@ import type { ApiSuccessResponse, User } from '@/types/auth';
  * This handles page refreshes where Zustand state is lost but cookies persist.
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, accessToken, setUser, setTokens, setShowOnboarding } = useAuthStore();
+  const { user, accessToken, setUser, setTokens, setShowOnboarding, logout } =
+    useAuthStore();
   const [ready, setReady] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const restoreAttempted = useRef(false);
 
   useEffect(() => {
+    // Only attempt restore once to avoid loops
+    if (restoreAttempted.current) return;
+    restoreAttempted.current = true;
+
     async function restoreSession() {
       // Case 1: already have user — just check onboarding
-      if (user) {
+      if (user && accessToken) {
         if (!user.onboardingCompleted && user.role !== 'ADMIN') {
           setShowOnboarding(true);
         }
@@ -45,11 +51,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           if (!u.onboardingCompleted && u.role !== 'ADMIN') {
             setShowOnboarding(true);
           }
+          setReady(true);
+          return;
         } catch {
-          // Token may be invalid; interceptor will handle redirect
+          // Token invalid — fall through to redirect
         }
-        setReady(true);
-        return;
       }
 
       // Case 3: no access token (page refresh) — try refresh token from cookie
@@ -79,20 +85,22 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           if (!u.onboardingCompleted && u.role !== 'ADMIN') {
             setShowOnboarding(true);
           }
+          setReady(true);
+          return;
         } catch {
           // Refresh token expired or invalid — clear everything
+          logout();
           clearAuthCookies();
-          if (typeof window !== 'undefined') {
-            window.location.href = '/login';
-          }
-          return;
         }
       }
 
+      // No valid session — redirect to login
       setReady(true);
+      router.replace('/login');
     }
     restoreSession();
-  }, [accessToken, user, setUser, setTokens, setShowOnboarding]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Client-side role guard: admin cannot access /dashboard or /history
   useEffect(() => {
@@ -117,25 +125,28 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Block render while redirecting
-  if (user) {
-    const isAdmin = user.role === 'ADMIN';
-    const adminBlocked = ['/dashboard', '/history'];
-    const userBlocked = ['/admin'];
-    if (isAdmin && adminBlocked.some((r) => pathname === r || pathname.startsWith(`${r}/`))) {
-      return (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-background'>
-          <div className='size-6 animate-spin rounded-full border-2 border-primary border-t-transparent' />
-        </div>
-      );
-    }
-    if (!isAdmin && userBlocked.some((r) => pathname === r || pathname.startsWith(`${r}/`))) {
-      return (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-background'>
-          <div className='size-6 animate-spin rounded-full border-2 border-primary border-t-transparent' />
-        </div>
-      );
-    }
+  // No user after restore — show spinner while redirect happens
+  if (!user || !accessToken) {
+    return (
+      <div className='fixed inset-0 z-50 flex items-center justify-center bg-background'>
+        <div className='size-6 animate-spin rounded-full border-2 border-primary border-t-transparent' />
+      </div>
+    );
+  }
+
+  // Block render while role redirect is pending
+  const isAdmin = user.role === 'ADMIN';
+  const adminBlocked = ['/dashboard', '/history'];
+  const userBlocked = ['/admin'];
+  if (
+    (isAdmin && adminBlocked.some((r) => pathname === r || pathname.startsWith(`${r}/`))) ||
+    (!isAdmin && userBlocked.some((r) => pathname === r || pathname.startsWith(`${r}/`)))
+  ) {
+    return (
+      <div className='fixed inset-0 z-50 flex items-center justify-center bg-background'>
+        <div className='size-6 animate-spin rounded-full border-2 border-primary border-t-transparent' />
+      </div>
+    );
   }
 
   return <>{children}</>;

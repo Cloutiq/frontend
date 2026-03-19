@@ -62,27 +62,32 @@ export function RegisterForm() {
     data: AuthTokens,
     authMethod: 'email' | 'google'
   ) {
+    // Step 1: Store tokens
     setTokens(data.accessToken, data.refreshToken);
     setRefreshTokenCookie(data.refreshToken);
-    setAuthCookies('USER');
-    router.push('/dashboard');
 
-    // Fetch user profile in background
-    apiClient
-      .get<ApiSuccessResponse<User>>('/auth/who-am-i')
-      .then((res) => {
-        const u = res.data.data;
-        setUser(u);
-        setAuthCookies(u.role);
-        if (!u.onboardingCompleted && u.role !== 'ADMIN') {
-          setShowOnboarding(true);
-        }
-        try {
-          identifyUser(u);
-          trackSignUp(u.id, authMethod);
-        } catch {}
-      })
-      .catch(() => {});
+    // Step 2: Fetch user profile BEFORE navigating
+    try {
+      const res = await apiClient.get<ApiSuccessResponse<User>>(
+        '/auth/who-am-i'
+      );
+      const u = res.data.data;
+      setUser(u);
+      setAuthCookies(u.role);
+      if (!u.onboardingCompleted && u.role !== 'ADMIN') {
+        setShowOnboarding(true);
+      }
+      try {
+        identifyUser(u);
+        trackSignUp(u.id, authMethod);
+      } catch {}
+    } catch {
+      // Fallback: set basic cookies so middleware works
+      setAuthCookies('USER');
+    }
+
+    // Step 3: Navigate AFTER store is populated
+    router.replace('/dashboard');
   }
 
   async function onSubmit(formData: RegisterFormData) {

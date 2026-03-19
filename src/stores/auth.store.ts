@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { User } from '@/types/auth';
+import { useAnalysisStore } from '@/stores/analysis.store';
 
 interface AuthState {
   user: User | null;
@@ -26,13 +27,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setTokens: (accessToken, refreshToken) =>
     set({ accessToken, refreshToken }),
 
-  logout: () =>
+  logout: () => {
     set({
       user: null,
       accessToken: null,
       refreshToken: null,
       showOnboarding: false
-    }),
+    });
+    // Clear analysis data from previous session
+    useAnalysisStore.getState().clearAnalysis();
+  },
 
   isAuthenticated: () => get().accessToken !== null
 }));

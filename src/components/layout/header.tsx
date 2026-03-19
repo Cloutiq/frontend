@@ -35,7 +35,7 @@ export default function Header() {
     }
     storeLogout();
     clearAuthCookies();
-    router.push('/login');
+    router.replace('/login');
   }
 
   return (

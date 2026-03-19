@@ -58,7 +58,7 @@ export function LoginForm() {
     if (data.mustChangeCredentials) {
       setAuthCookies('ADMIN');
       setMustChangeCookie(true);
-      router.push('/change-credentials');
+      router.replace('/change-credentials');
       return;
     }
 
@@ -78,11 +78,11 @@ export function LoginForm() {
         trackUserLoggedIn(u.id, authMethod);
       } catch {}
       const dest = u.role === 'ADMIN' ? '/admin' : redirectTo;
-      router.push(dest);
+      router.replace(dest);
     } catch {
       // Fallback: redirect without role info
       setAuthCookies('USER');
-      router.push(redirectTo);
+      router.replace(redirectTo);
     }
   }
 
