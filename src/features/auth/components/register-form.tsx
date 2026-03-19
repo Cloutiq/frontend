@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -44,7 +43,6 @@ const registerSchema = z
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export function RegisterForm() {
-  const router = useRouter();
   const { setTokens, setUser, setShowOnboarding } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -86,8 +84,8 @@ export function RegisterForm() {
       setAuthCookies('USER');
     }
 
-    // Step 3: Navigate AFTER store is populated
-    router.replace('/dashboard');
+    // Step 3: Full page load to clear Next.js Router Cache from previous session
+    window.location.href = '/dashboard';
   }
 
   async function onSubmit(formData: RegisterFormData) {

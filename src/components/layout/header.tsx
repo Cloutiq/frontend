@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { SidebarTrigger } from '../ui/sidebar';
 import { Separator } from '../ui/separator';
 import { Breadcrumbs } from '../breadcrumbs';
@@ -19,7 +18,6 @@ function getUsageColor(used: number): string {
 }
 
 export default function Header() {
-  const router = useRouter();
   const { user, logout: storeLogout, refreshToken } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
   const isFree = !isAdmin && user?.plan === 'FREE';
@@ -35,7 +33,8 @@ export default function Header() {
     }
     storeLogout();
     clearAuthCookies();
-    router.replace('/login');
+    // Full page load to clear Next.js Router Cache so next login starts fresh
+    window.location.href = '/login';
   }
 
   return (

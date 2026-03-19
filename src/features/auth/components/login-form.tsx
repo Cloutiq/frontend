@@ -78,11 +78,12 @@ export function LoginForm() {
         trackUserLoggedIn(u.id, authMethod);
       } catch {}
       const dest = u.role === 'ADMIN' ? '/admin' : redirectTo;
-      router.replace(dest);
+      // Full page load to clear Next.js Router Cache from previous session
+      window.location.href = dest;
     } catch {
       // Fallback: redirect without role info
       setAuthCookies('USER');
-      router.replace(redirectTo);
+      window.location.href = redirectTo;
     }
   }
 
