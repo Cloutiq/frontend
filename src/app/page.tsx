@@ -205,6 +205,22 @@ export default function LandingPage() {
           </span>
         </div>
         <div className='nav-right'>
+          <div className='t-pill'>
+            <button
+              className={`t-btn${theme === 'dark' ? ' on' : ''}`}
+              onClick={() => setTheme('dark')}
+              title='Dark'
+            >
+              &#127769;
+            </button>
+            <button
+              className={`t-btn${theme === 'light' ? ' on' : ''}`}
+              onClick={() => setTheme('light')}
+              title='Light'
+            >
+              &#9728;&#65039;
+            </button>
+          </div>
           <Link href='/login' className='btn-outline'>
             Log in
           </Link>

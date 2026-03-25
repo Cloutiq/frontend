@@ -220,6 +220,36 @@
   align-items: center;
   gap: 12px;
 }
+/* Theme toggle pill */
+.landing-page .t-pill {
+  display: flex;
+  align-items: center;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 100px;
+  padding: 3px;
+  gap: 2px;
+}
+.landing-page .t-btn {
+  width: 30px;
+  height: 26px;
+  border-radius: 100px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s;
+}
+.landing-page .t-btn.on {
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
 .landing-page .btn-outline {
   font-size: 14px;
   font-weight: 500;
