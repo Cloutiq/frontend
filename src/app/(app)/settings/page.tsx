@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
-import { IconEye, IconEyeOff, IconLoader2, IconCreditCard } from '@tabler/icons-react';
+import { IconEye, IconEyeOff, IconLoader2 } from '@tabler/icons-react';
 import { format } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
@@ -25,7 +26,7 @@ import {
   DialogTitle,
   DialogFooter
 } from '@/components/ui/dialog';
-import type { ApiErrorResponse, ApiSuccessResponse, User } from '@/types/auth';
+import type { ApiErrorResponse, ApiSuccessResponse, User, BillingHistoryEntry } from '@/types/auth';
 
 const changePasswordSchema = z.object({
   oldPassword: z.string().min(1, 'Current password is required'),
@@ -185,9 +186,7 @@ export default function SettingsPage() {
       )}
 
       {/* Billing History — non-admin only */}
-      {!isAdmin && user?.billingHistory && user.billingHistory.length > 0 && (
-        <BillingHistorySection history={user.billingHistory} />
-      )}
+      {!isAdmin && <BillingHistorySection />}
 
       {/* Password section */}
       <div className='card-glow p-6'>
@@ -419,6 +418,13 @@ function SubscriptionSection({
           <Button size='sm' className='w-fit' onClick={handleUpgrade}>
             Upgrade to Creator — $10/month
           </Button>
+          <p className='text-[11px] text-muted-foreground'>
+            By subscribing you agree to our{' '}
+            <Link href='/terms' className='underline hover:text-foreground'>
+              Terms of Service
+            </Link>{' '}
+            including the payment and cancellation terms.
+          </p>
         </div>
       )}
 
@@ -485,11 +491,37 @@ function SubscriptionSection({
 
 // ── Billing History Section ──────────────────────────────────
 
-function BillingHistorySection({
-  history
-}: {
-  history: { date: string; event: string; amount: number | null }[];
-}) {
+function BillingHistorySection() {
+  const [history, setHistory] = useState<BillingHistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchHistory() {
+      try {
+        const res = await apiClient.get('/api/billing-history');
+        setHistory(res.data?.data?.history || []);
+      } catch {
+        // No billing history available
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchHistory();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className='card-glow mb-6 p-6'>
+        <h2 className='mb-4 font-heading text-lg font-bold text-foreground'>
+          Billing History
+        </h2>
+        <p className='text-sm text-muted-foreground'>Loading...</p>
+      </div>
+    );
+  }
+
+  if (history.length === 0) return null;
+
   return (
     <div className='card-glow mb-6 p-6'>
       <h2 className='mb-4 font-heading text-lg font-bold text-foreground'>
@@ -497,7 +529,7 @@ function BillingHistorySection({
       </h2>
       <div className='overflow-hidden rounded-sm border border-border'>
         {/* Header */}
-        <div className='grid grid-cols-3 border-b border-border bg-muted/30 px-4 py-2'>
+        <div className='grid grid-cols-[120px_1fr_80px] border-b border-border bg-muted/30 px-4 py-2'>
           <span className='font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
             Date
           </span>
@@ -509,7 +541,7 @@ function BillingHistorySection({
           </span>
         </div>
         {/* Rows */}
-        {history.map((entry, i) => {
+        {history.map((entry) => {
           let formattedDate = entry.date;
           try {
             formattedDate = format(new Date(entry.date), 'MMM d, yyyy');
@@ -517,8 +549,8 @@ function BillingHistorySection({
 
           return (
             <div
-              key={i}
-              className='grid grid-cols-3 border-b border-border/50 px-4 py-3 last:border-b-0'
+              key={entry.id}
+              className='grid grid-cols-[120px_1fr_80px] border-b border-border/50 px-4 py-3 last:border-b-0'
             >
               <span className='font-mono text-xs text-muted-foreground'>
                 {formattedDate}
@@ -528,7 +560,7 @@ function BillingHistorySection({
               </span>
               <span className='text-right font-mono text-sm text-foreground'>
                 {entry.amount != null
-                  ? `$${(entry.amount / 100).toFixed(2)}`
+                  ? `$${entry.amount.toFixed(2)}`
                   : '\u2014'}
               </span>
             </div>

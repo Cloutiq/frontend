@@ -53,7 +53,7 @@ const faqs = [
   },
   {
     q: 'Is there an agency or team plan?',
-    a: 'Yes. The Agency plan includes team workspaces with client tagging, multiple member seats, and niche-specific benchmarking per client. Email hello@cloutiq.ai to discuss pricing for your team size.'
+    a: 'Yes. The Agency plan includes team workspaces with client tagging, multiple member seats, and niche-specific benchmarking per client. Email team@cloutiq.ai to discuss pricing for your team size.'
   }
 ];
 
@@ -908,7 +908,7 @@ export default function LandingPage() {
                   Priority support + onboarding
                 </div>
               </div>
-              <a href='mailto:hello@cloutiq.ai' className='p-cta outlined'>
+              <a href='mailto:team@cloutiq.ai' className='p-cta outlined'>
                 Talk to us &rarr;
               </a>
             </div>
@@ -1146,7 +1146,7 @@ export default function LandingPage() {
                 >
                   For agencies
                 </span>
-                <a href='mailto:hello@cloutiq.ai' className='footer-link'>
+                <a href='mailto:team@cloutiq.ai' className='footer-link'>
                   Agency pricing
                 </a>
                 <Link href='/login' className='footer-link'>
@@ -1163,7 +1163,7 @@ export default function LandingPage() {
                 <Link href='/terms' className='footer-link'>
                   Terms
                 </Link>
-                <a href='mailto:hello@cloutiq.ai' className='footer-link'>
+                <a href='mailto:team@cloutiq.ai' className='footer-link'>
                   Contact
                 </a>
               </div>

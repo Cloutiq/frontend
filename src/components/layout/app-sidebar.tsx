@@ -126,6 +126,20 @@ export default function AppSidebar() {
             </SidebarMenu>
           </>
         )}
+        <div className='flex gap-3 px-3 pb-2'>
+          <Link
+            href='/terms'
+            className='text-[11px] text-muted-foreground hover:text-foreground'
+          >
+            Terms
+          </Link>
+          <Link
+            href='/privacy'
+            className='text-[11px] text-muted-foreground hover:text-foreground'
+          >
+            Privacy
+          </Link>
+        </div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

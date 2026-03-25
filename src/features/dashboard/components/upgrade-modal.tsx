@@ -104,6 +104,13 @@ export function UpgradeModal({
             >
               {loading ? 'Redirecting...' : 'Upgrade to Creator'}
             </Button>
+            <p className='mt-2 text-center text-[11px] text-muted-foreground'>
+              By subscribing you agree to our{' '}
+              <a href='/terms' className='underline hover:text-foreground'>
+                Terms of Service
+              </a>{' '}
+              including the payment and cancellation terms.
+            </p>
 
             <button
               onClick={onClose}

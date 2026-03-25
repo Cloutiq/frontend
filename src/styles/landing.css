@@ -1379,7 +1379,7 @@
 
 /* ---------- FOOTER ---------- */
 .landing-page .l-footer {
-  background: var(--ink);
+  background: #0a0f1e;
   padding: 64px 0 32px;
   border-top: 1px solid var(--border);
 }

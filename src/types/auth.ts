@@ -23,13 +23,17 @@ export interface User {
   hasPassword: boolean;
   subscriptionStatus: 'active' | 'canceling' | null;
   subscriptionEndDate: string | null;
-  billingHistory: BillingHistoryEntry[] | null;
 }
 
 export interface BillingHistoryEntry {
-  date: string;
+  type: 'payment' | 'event';
+  id: string;
   event: string;
   amount: number | null;
+  currency: string | null;
+  status: string | null;
+  details: Record<string, unknown> | null;
+  date: string;
 }
 
 export interface AuthTokens {
