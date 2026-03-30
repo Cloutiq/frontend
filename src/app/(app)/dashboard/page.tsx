@@ -471,7 +471,7 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className='flex flex-1 flex-col items-center justify-center p-6 md:p-8'
+          className='flex flex-1 flex-col items-center justify-center p-4 sm:p-6 md:p-8'
         >
           <div className='w-full max-w-2xl'>
             <div className='mb-6 text-center'>

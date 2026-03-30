@@ -194,3 +194,74 @@ textarea::-webkit-scrollbar-thumb:hover {
   margin-right: 8px;
   vertical-align: middle;
 }
+
+/* ═══════════════════════════════════════
+   TERMLY PRIVACY POLICY — theme overrides
+   Termly HTML uses hardcoded inline styles
+   (color: rgb(0,0,0), background: white),
+   so we need blanket !important overrides.
+   ═══════════════════════════════════════ */
+.privacy-termly-embed {
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+/* Force all text to use theme colors */
+.privacy-termly-embed,
+.privacy-termly-embed * {
+  color: #0f172a !important;
+  background: transparent !important;
+}
+/* Dark mode — force all text white */
+:is(.dark) .privacy-termly-embed,
+:is(.dark) .privacy-termly-embed * {
+  color: #f1f5f9 !important;
+}
+/* Dark mode — subtitles slightly dimmer */
+:is(.dark) .privacy-termly-embed [data-custom-class='subtitle'],
+:is(.dark) .privacy-termly-embed [data-custom-class='subtitle'] * {
+  color: #cbd5e1 !important;
+}
+/* Headings */
+.privacy-termly-embed [data-custom-class='title'],
+.privacy-termly-embed [data-custom-class='title'] *,
+.privacy-termly-embed [data-custom-class='heading_1'],
+.privacy-termly-embed [data-custom-class='heading_1'] *,
+.privacy-termly-embed [data-custom-class='heading_2'],
+.privacy-termly-embed [data-custom-class='heading_2'] * {
+  font-family: var(--font-heading) !important;
+}
+:is(.dark) .privacy-termly-embed [data-custom-class='title'],
+:is(.dark) .privacy-termly-embed [data-custom-class='title'] *,
+:is(.dark) .privacy-termly-embed [data-custom-class='heading_1'],
+:is(.dark) .privacy-termly-embed [data-custom-class='heading_1'] *,
+:is(.dark) .privacy-termly-embed [data-custom-class='heading_2'],
+:is(.dark) .privacy-termly-embed [data-custom-class='heading_2'] * {
+  color: #ffffff !important;
+}
+/* Body text */
+.privacy-termly-embed [data-custom-class='body_text'],
+.privacy-termly-embed [data-custom-class='body_text'] * {
+  font-family: var(--font-sans) !important;
+}
+:is(.dark) .privacy-termly-embed [data-custom-class='body_text'],
+:is(.dark) .privacy-termly-embed [data-custom-class='body_text'] * {
+  color: #e2e8f0 !important;
+}
+/* Links — accent color */
+.privacy-termly-embed a,
+.privacy-termly-embed [data-custom-class='link'],
+.privacy-termly-embed [data-custom-class='link'] * {
+  color: var(--accent) !important;
+  text-decoration: underline;
+}
+.privacy-termly-embed ul {
+  list-style-type: square;
+  padding-left: 1.5rem;
+}
+.privacy-termly-embed ul > li > ul {
+  list-style-type: circle;
+}
+.privacy-termly-embed ol {
+  padding-left: 1.5rem;
+}

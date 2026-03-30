@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import fs from 'fs';
+import path from 'path';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | CloutIQ',
@@ -8,6 +10,12 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
+  const htmlPath = path.join(
+    process.cwd(),
+    'src/app/privacy/privacy-content.html'
+  );
+  const privacyHtml = fs.readFileSync(htmlPath, 'utf-8').replace(/\r\n/g, '\n');
+
   return (
     <div className='min-h-screen bg-background'>
       <div className='mx-auto max-w-3xl px-6 py-12'>
@@ -26,29 +34,10 @@ export default function PrivacyPage() {
             cloutiq.ai
           </p>
 
-          {/* Termly embed placeholder — replace the div below with the Termly
-              embed script from your Termly dashboard (Publishing > Embed Code).
-              Example:
-              <div
-                name="termly-embed"
-                data-id="YOUR_TERMLY_POLICY_ID"
-                data-type="iframe"
-              />
-              <script src="https://app.termly.io/embed-policy.min.js" />
-          */}
-          <div id='termly-embed' className='min-h-[200px]'>
-            <p className='text-sm text-muted-foreground'>
-              Our privacy policy is being prepared and will be available here
-              shortly. For questions, contact{' '}
-              <a
-                href='mailto:team@cloutiq.ai'
-                className='text-primary hover:underline'
-              >
-                team@cloutiq.ai
-              </a>
-              .
-            </p>
-          </div>
+          <div
+            className='privacy-termly-embed'
+            dangerouslySetInnerHTML={{ __html: privacyHtml }}
+          />
         </div>
       </div>
     </div>

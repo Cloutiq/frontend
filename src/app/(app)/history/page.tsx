@@ -136,9 +136,9 @@ export default function HistoryPage() {
     fetchHistory(1);
   }, [fetchHistory]);
 
-  // Table header component (shared between loading and data states)
+  // Table header component (hidden on mobile — cards used instead)
   const tableHeader = (
-    <div className='grid grid-cols-[120px_1fr_80px_80px_120px] items-center border-b border-border bg-card/50 px-4 py-2'>
+    <div className='hidden grid-cols-[120px_1fr_80px_80px_120px] items-center border-b border-border bg-card/50 px-4 py-2 md:grid'>
       <span className='font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground'>
         Date
       </span>
@@ -160,7 +160,7 @@ export default function HistoryPage() {
   // Loading state — real header + skeleton rows
   if (loading) {
     return (
-      <div className='flex-1 p-6 md:p-8'>
+      <div className='flex-1 p-4 sm:p-6 md:p-8'>
         <div className='mx-auto max-w-5xl'>
           {/* Page header — always visible */}
           <div className='mb-6 flex items-center justify-between'>
@@ -180,29 +180,44 @@ export default function HistoryPage() {
           {/* Table with real header + skeleton rows */}
           <div className='card-glow w-full overflow-hidden'>
             {tableHeader}
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className='grid h-16 grid-cols-[120px_1fr_80px_80px_120px] items-center border-b border-border/50 px-4'
-              >
-                {/* Date skeleton */}
-                <div className='flex flex-col gap-1'>
-                  <Skeleton className='h-3 w-24 rounded-sm' />
-                  <Skeleton className='h-2.5 w-16 rounded-sm' />
+            {/* Mobile skeleton cards */}
+            <div className='flex flex-col gap-3 p-3 md:hidden'>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className='rounded-[4px] border border-border/50 p-3'>
+                  <div className='flex items-center justify-between'>
+                    <Skeleton className='h-3 w-24 rounded-sm' />
+                    <Skeleton className='h-6 w-8 rounded-sm' />
+                  </div>
+                  <Skeleton className='mt-2 h-3 w-full rounded-sm' />
+                  <Skeleton className='mt-1 h-3 w-2/3 rounded-sm' />
+                  <div className='mt-2 flex items-center gap-2'>
+                    <Skeleton className='h-5 w-12 rounded-sm' />
+                    <Skeleton className='h-2.5 w-16 rounded-sm' />
+                  </div>
                 </div>
-                {/* Script preview skeleton */}
-                <div className='flex flex-col gap-1 pr-4'>
-                  <Skeleton className='h-3 w-48 rounded-sm' />
-                  <Skeleton className='h-3 w-32 rounded-sm' />
+              ))}
+            </div>
+            {/* Desktop skeleton rows */}
+            <div className='hidden md:block'>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className='grid h-16 grid-cols-[120px_1fr_80px_80px_120px] items-center border-b border-border/50 px-4'
+                >
+                  <div className='flex flex-col gap-1'>
+                    <Skeleton className='h-3 w-24 rounded-sm' />
+                    <Skeleton className='h-2.5 w-16 rounded-sm' />
+                  </div>
+                  <div className='flex flex-col gap-1 pr-4'>
+                    <Skeleton className='h-3 w-48 rounded-sm' />
+                    <Skeleton className='h-3 w-32 rounded-sm' />
+                  </div>
+                  <Skeleton className='h-5 w-12 rounded-sm' />
+                  <Skeleton className='h-6 w-8 rounded-sm' />
+                  <Skeleton className='h-8 w-[88px] rounded-sm' />
                 </div>
-                {/* Language skeleton */}
-                <Skeleton className='h-5 w-12 rounded-sm' />
-                {/* Score skeleton */}
-                <Skeleton className='h-6 w-8 rounded-sm' />
-                {/* Action skeleton */}
-                <Skeleton className='h-8 w-[88px] rounded-sm' />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -282,67 +297,94 @@ export default function HistoryPage() {
         <div className='card-glow w-full overflow-hidden'>
           {tableHeader}
 
-          {/* Data rows */}
-          {entries.map((entry) => {
-            const { date, time } = formatDate(entry.createdAt);
-            const langCode = languageCodes[entry.language] || entry.language.toUpperCase();
+          {/* Mobile card rows */}
+          <div className='flex flex-col gap-2 p-3 md:hidden'>
+            {entries.map((entry) => {
+              const { date, time } = formatDate(entry.createdAt);
+              const langCode = languageCodes[entry.language] || entry.language.toUpperCase();
 
-            return (
-              <div
-                key={entry.id}
-                className='grid h-16 grid-cols-[120px_1fr_80px_80px_120px] items-center border-b border-border/50 px-4 transition-colors duration-150 hover:bg-muted/20'
-              >
-                {/* Date */}
-                <div className='flex flex-col'>
-                  <span className='font-mono text-xs text-muted-foreground'>
-                    {date}
-                  </span>
-                  <span className='font-mono text-[10px] text-muted-foreground/70'>
-                    {time}
-                  </span>
-                </div>
-
-                {/* Script preview */}
-                <p className='truncate pr-4 text-sm text-foreground'>
-                  {(entry.scriptText || '').length > 150
-                    ? `${entry.scriptText.slice(0, 150)}...`
-                    : entry.scriptText || 'No script text'}
-                </p>
-
-                {/* Language */}
-                <Badge
-                  variant='outline'
-                  className='w-fit font-mono text-[10px]'
-                >
-                  {langCode}
-                </Badge>
-
-                {/* Viral score */}
-                <span
-                  className='font-heading text-xl font-bold'
-                  style={{ color: getScoreColor(entry.viralScore) }}
-                >
-                  {entry.viralScore}
-                </span>
-
-                {/* Action */}
-                <Button
-                  variant='outline'
-                  size='sm'
-                  className='w-fit text-xs'
+              return (
+                <div
+                  key={entry.id}
+                  className='rounded-[4px] border border-border/50 p-3 transition-colors duration-150 active:bg-muted/20'
                   onClick={() => setSelectedEntry(entry)}
                 >
-                  <IconEye className='mr-1 size-3' />
-                  View Details
-                </Button>
-              </div>
-            );
-          })}
+                  <div className='flex items-center justify-between'>
+                    <span className='font-mono text-[10px] text-muted-foreground'>
+                      {date} &middot; {time}
+                    </span>
+                    <span
+                      className='font-heading text-xl font-bold'
+                      style={{ color: getScoreColor(entry.viralScore) }}
+                    >
+                      {entry.viralScore}
+                    </span>
+                  </div>
+                  <p className='mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-foreground'>
+                    {entry.scriptText || 'No script text'}
+                  </p>
+                  <div className='mt-2 flex items-center gap-2'>
+                    <Badge variant='outline' className='font-mono text-[10px]'>
+                      {langCode}
+                    </Badge>
+                    <span className='text-[10px] text-muted-foreground'>Tap to view</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop table rows */}
+          <div className='hidden md:block'>
+            {entries.map((entry) => {
+              const { date, time } = formatDate(entry.createdAt);
+              const langCode = languageCodes[entry.language] || entry.language.toUpperCase();
+
+              return (
+                <div
+                  key={entry.id}
+                  className='grid h-16 grid-cols-[120px_1fr_80px_80px_120px] items-center border-b border-border/50 px-4 transition-colors duration-150 hover:bg-muted/20'
+                >
+                  <div className='flex flex-col'>
+                    <span className='font-mono text-xs text-muted-foreground'>
+                      {date}
+                    </span>
+                    <span className='font-mono text-[10px] text-muted-foreground/70'>
+                      {time}
+                    </span>
+                  </div>
+                  <p className='truncate pr-4 text-sm text-foreground'>
+                    {(entry.scriptText || '').length > 150
+                      ? `${entry.scriptText.slice(0, 150)}...`
+                      : entry.scriptText || 'No script text'}
+                  </p>
+                  <Badge variant='outline' className='w-fit font-mono text-[10px]'>
+                    {langCode}
+                  </Badge>
+                  <span
+                    className='font-heading text-xl font-bold'
+                    style={{ color: getScoreColor(entry.viralScore) }}
+                  >
+                    {entry.viralScore}
+                  </span>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='w-fit text-xs'
+                    onClick={() => setSelectedEntry(entry)}
+                  >
+                    <IconEye className='mr-1 size-3' />
+                    View Details
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Pagination */}
         {meta && meta.totalPages > 0 && (
-          <div className='mt-4 flex items-center justify-between'>
+          <div className='mt-4 flex flex-col items-center gap-2 sm:flex-row sm:justify-between'>
             <p className='font-mono text-xs text-muted-foreground'>
               {meta.total} analyses total
             </p>
@@ -354,10 +396,10 @@ export default function HistoryPage() {
                 onClick={() => fetchHistory(page - 1)}
               >
                 <IconChevronLeft className='size-4' />
-                Previous
+                <span className='hidden sm:inline'>Previous</span>
               </Button>
               <span className='font-mono text-xs text-muted-foreground'>
-                Page {page} of {meta.totalPages}
+                {page} / {meta.totalPages}
               </span>
               <Button
                 variant='outline'
@@ -365,7 +407,7 @@ export default function HistoryPage() {
                 disabled={page >= meta.totalPages}
                 onClick={() => fetchHistory(page + 1)}
               >
-                Next
+                <span className='hidden sm:inline'>Next</span>
                 <IconChevronRight className='size-4' />
               </Button>
             </div>

@@ -92,7 +92,7 @@ export function ScriptRewrite({ data, originalScript }: ScriptRewriteProps) {
               Original
             </span>
           </div>
-          <div className='max-h-[250px] overflow-y-auto p-3 sm:max-h-[400px] sm:p-4'>
+          <div className='max-h-[350px] overflow-y-auto p-3 sm:max-h-[400px] sm:p-4'>
             <p className='whitespace-pre-wrap text-[13px] leading-[1.8] text-muted-foreground'>
               {originalScript}
             </p>
@@ -106,7 +106,7 @@ export function ScriptRewrite({ data, originalScript }: ScriptRewriteProps) {
               Rewritten
             </span>
           </div>
-          <div className='max-h-[250px] overflow-y-auto p-3 sm:max-h-[400px] sm:p-4'>
+          <div className='max-h-[350px] overflow-y-auto p-3 sm:max-h-[400px] sm:p-4'>
             <p className='whitespace-pre-wrap text-[13px] leading-[1.8] text-foreground'>
               {parts.map((part, i) => (
                 <Fragment key={i}>

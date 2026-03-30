@@ -45,12 +45,12 @@ export default function Header() {
         <Breadcrumbs />
       </div>
 
-      <div className='flex items-center gap-3 px-4'>
+      <div className='flex items-center gap-1.5 px-2 sm:gap-3 sm:px-4'>
         {/* Plan badge (hidden for admin) */}
         {user && !isAdmin && isFree && (
           <Badge
             variant='outline'
-            className='hidden border-score-mid/50 bg-score-mid/10 font-mono text-xs text-score-mid sm:inline-flex'
+            className='border-score-mid/50 bg-score-mid/10 font-mono text-[10px] text-score-mid sm:text-xs'
           >
             FREE
           </Badge>
@@ -58,7 +58,7 @@ export default function Header() {
         {user && !isAdmin && user.plan === 'CREATOR' && (
           <Badge
             variant='outline'
-            className='hidden border-primary/50 bg-primary/10 font-mono text-xs text-primary sm:inline-flex'
+            className='border-primary/50 bg-primary/10 font-mono text-[10px] text-primary sm:text-xs'
           >
             CREATOR
           </Badge>
@@ -66,12 +66,12 @@ export default function Header() {
 
         {/* Usage counter for FREE plan */}
         {isFree && (
-          <div className='hidden items-center gap-2 sm:flex'>
-            <span className='font-mono text-xs text-muted-foreground'>
+          <div className='flex items-center gap-1.5 sm:gap-2'>
+            <span className='font-mono text-[10px] text-muted-foreground sm:text-xs'>
               <span style={{ color: getUsageColor(used) }}>{used}</span>
               {' / 3'}
             </span>
-            <div className='h-1.5 w-16 overflow-hidden rounded-sm bg-muted'>
+            <div className='hidden h-1.5 w-16 overflow-hidden rounded-sm bg-muted sm:block'>
               <div
                 className='h-full rounded-sm transition-all duration-300'
                 style={{

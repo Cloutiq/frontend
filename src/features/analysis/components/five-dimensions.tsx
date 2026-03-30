@@ -39,8 +39,8 @@ function DimensionRow({
       className='group cursor-pointer border-b border-border/50 last:border-0'
       onClick={() => setOpen(!open)}
     >
-      <div className='flex items-center gap-2 py-3.5 sm:gap-4'>
-        <span className='w-[100px] shrink-0 text-[12px] font-medium text-foreground sm:w-[140px] sm:text-[13px]'>
+      <div className='flex items-center gap-2 py-3 sm:gap-4 sm:py-3.5'>
+        <span className='w-[80px] shrink-0 text-[11px] font-medium text-foreground sm:w-[140px] sm:text-[13px]'>
           {label}
         </span>
 
@@ -59,7 +59,7 @@ function DimensionRow({
         </div>
 
         <span
-          className='min-w-[36px] text-right font-mono text-sm font-medium sm:min-w-[48px]'
+          className='min-w-[28px] text-right font-mono text-xs font-medium sm:min-w-[48px] sm:text-sm'
           style={{ color }}
         >
           {dim.score}

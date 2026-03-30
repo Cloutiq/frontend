@@ -60,7 +60,8 @@ const faqs = [
 // ── Component ────────────────────────────────────────────
 
 export default function LandingPage() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [ctaEmail, setCtaEmail] = useState('');
   const [ctaSubmitted, setCtaSubmitted] = useState(false);
@@ -79,6 +80,8 @@ export default function LandingPage() {
   const badScoreRef = useRef<HTMLDivElement>(null);
   const goodScoreRef = useRef<HTMLDivElement>(null);
   const baBarRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => setMounted(true), []);
 
   // reveal on scroll
   useEffect(() => {
@@ -207,14 +210,14 @@ export default function LandingPage() {
         <div className='nav-right'>
           <div className='t-pill'>
             <button
-              className={`t-btn${theme === 'dark' ? ' on' : ''}`}
+              className={`t-btn${mounted && resolvedTheme === 'dark' ? ' on' : ''}`}
               onClick={() => setTheme('dark')}
               title='Dark'
             >
               &#127769;
             </button>
             <button
-              className={`t-btn${theme === 'light' ? ' on' : ''}`}
+              className={`t-btn${mounted && resolvedTheme === 'light' ? ' on' : ''}`}
               onClick={() => setTheme('light')}
               title='Light'
             >

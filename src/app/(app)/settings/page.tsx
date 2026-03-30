@@ -87,7 +87,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className='max-w-2xl flex-1 p-6 md:p-8'>
+    <div className='max-w-2xl flex-1 p-4 sm:p-6 md:p-8'>
       <h1 className='mb-6 font-heading text-2xl font-bold text-foreground'>
         Settings
       </h1>
@@ -528,8 +528,8 @@ function BillingHistorySection() {
         Billing History
       </h2>
       <div className='overflow-hidden rounded-sm border border-border'>
-        {/* Header */}
-        <div className='grid grid-cols-[120px_1fr_80px] border-b border-border bg-muted/30 px-4 py-2'>
+        {/* Desktop header */}
+        <div className='hidden grid-cols-[120px_1fr_80px] border-b border-border bg-muted/30 px-4 py-2 sm:grid'>
           <span className='font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
             Date
           </span>
@@ -550,19 +550,27 @@ function BillingHistorySection() {
           return (
             <div
               key={entry.id}
-              className='grid grid-cols-[120px_1fr_80px] border-b border-border/50 px-4 py-3 last:border-b-0'
+              className='border-b border-border/50 px-3 py-2.5 last:border-b-0 sm:grid sm:grid-cols-[120px_1fr_80px] sm:px-4 sm:py-3'
             >
-              <span className='font-mono text-xs text-muted-foreground'>
-                {formattedDate}
-              </span>
-              <span className='text-sm text-foreground capitalize'>
-                {entry.event}
-              </span>
-              <span className='text-right font-mono text-sm text-foreground'>
-                {entry.amount != null
-                  ? `$${entry.amount.toFixed(2)}`
-                  : '\u2014'}
-              </span>
+              {/* Mobile stacked layout */}
+              <div className='flex items-center justify-between sm:contents'>
+                <div className='flex items-center gap-2 sm:block'>
+                  <span className='text-sm text-foreground capitalize sm:hidden'>
+                    {entry.event}
+                  </span>
+                  <span className='font-mono text-[10px] text-muted-foreground sm:text-xs'>
+                    {formattedDate}
+                  </span>
+                </div>
+                <span className='hidden text-sm text-foreground capitalize sm:block'>
+                  {entry.event}
+                </span>
+                <span className='font-mono text-sm font-medium text-foreground sm:text-right sm:font-normal'>
+                  {entry.amount != null
+                    ? `$${entry.amount.toFixed(2)}`
+                    : '\u2014'}
+                </span>
+              </div>
             </div>
           );
         })}

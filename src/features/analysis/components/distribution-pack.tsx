@@ -17,7 +17,7 @@ function CopyBtn({ text }: { text: string }) {
     <Button
       variant='ghost'
       size='sm'
-      className='h-7 shrink-0 gap-1.5 text-xs opacity-0 transition-opacity duration-150 group-hover:opacity-100'
+      className='h-7 shrink-0 gap-1.5 text-xs opacity-100 sm:opacity-0 sm:transition-opacity sm:duration-150 sm:group-hover:opacity-100'
       onClick={copy}
     >
       {copied ? (
@@ -48,7 +48,7 @@ export function DistributionPack({ data }: DistributionPackProps) {
         Distribution Pack
       </h3>
 
-      <div className='grid gap-6 md:grid-cols-2'>
+      <div className='grid gap-4 sm:gap-6 md:grid-cols-2'>
         {/* Captions */}
         <div>
           <span className='mb-2 block font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground'>
