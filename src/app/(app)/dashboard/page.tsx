@@ -31,6 +31,7 @@ import { AnalysisResults } from '@/features/analysis/components/analysis-results
 import { UpgradeModal } from '@/features/dashboard/components/upgrade-modal';
 import type { Analysis, AnalysisLanguage } from '@/types/analysis';
 import type { ApiErrorResponse, ApiSuccessResponse, User } from '@/types/auth';
+import { pushToDataLayer, generateEventId } from '@/lib/gtm';
 
 const languages: { code: AnalysisLanguage; label: string }[] = [
   { code: 'en', label: 'EN' },
@@ -141,16 +142,48 @@ export default function DashboardPage() {
   const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messageRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Handle ?upgraded=true from Stripe checkout redirect
+  // Handle ?checkout=success from Stripe checkout redirect
   useEffect(() => {
-    if (searchParams.get('upgraded') === 'true') {
+    if (searchParams.get('checkout') !== 'success') return;
+
+    // Clean URL immediately
+    window.history.replaceState({}, '', '/dashboard');
+    toast.success('Welcome to Creator plan!');
+    refreshUser();
+
+    try {
+      if (user?.id) trackUpgradeCompleted(user.id);
+    } catch {}
+
+    // Fire GTM purchase event with backend-confirmed data
+    (async () => {
       try {
-        if (user?.id) trackUpgradeCompleted(user.id);
-      } catch {}
-      router.replace('/dashboard');
-      toast.success('Welcome to Creator plan!');
-      refreshUser();
-    }
+        const res = await apiClient.get('/api/latest-purchase');
+        const purchase = res.data?.data;
+        if (!purchase) return;
+
+        // Deduplicate by transaction ID
+        const firedTxns = JSON.parse(localStorage.getItem('gtm_fired_purchases') || '[]');
+        if (firedTxns.includes(purchase.transactionId)) return;
+
+        pushToDataLayer({
+          event: 'purchase',
+          event_id: generateEventId('purchase'),
+          transaction_id: purchase.transactionId,
+          user_id: user?.id,
+          plan_id: 'creator_monthly',
+          package_type: 'paid',
+          value: purchase.amount,
+          currency: purchase.currency,
+          subscription_id: purchase.subscriptionId
+        });
+
+        firedTxns.push(purchase.transactionId);
+        localStorage.setItem('gtm_fired_purchases', JSON.stringify(firedTxns));
+      } catch {
+        // Silently fail — purchase tracking is best-effort
+      }
+    })();
   }, []);
 
   // Progress bar + rotating messages tied to loading state

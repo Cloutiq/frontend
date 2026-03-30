@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,6 +22,7 @@ import {
   clearAuthCookies
 } from '@/lib/auth-cookie';
 import { identifyUser, trackSignUp } from '@/lib/analytics';
+import { pushToDataLayer, generateEventId } from '@/lib/gtm';
 import type {
   ApiErrorResponse,
   ApiSuccessResponse,
@@ -58,6 +59,16 @@ export function RegisterForm() {
     clearAuthCookies();
   });
 
+  // sign_up_start on mount
+  useEffect(() => {
+    pushToDataLayer({
+      event: 'sign_up_start',
+      signup_method: 'email',
+      plan_id: 'free_monthly',
+      package_type: 'free'
+    });
+  }, []);
+
   const {
     register,
     handleSubmit,
@@ -85,6 +96,13 @@ export function RegisterForm() {
       try {
         identifyUser(u);
         trackSignUp(u.id, authMethod);
+        pushToDataLayer({
+          event: 'sign_up',
+          event_id: generateEventId('signup'),
+          user_id: u.id,
+          plan_id: 'free_monthly',
+          package_type: 'free'
+        });
       } catch {}
     } catch {
       // Fallback: set basic cookies so middleware works
@@ -96,6 +114,11 @@ export function RegisterForm() {
   }
 
   async function onSubmit(formData: RegisterFormData) {
+    pushToDataLayer({
+      event: 'sign_up_submit',
+      signup_method: 'email',
+      form_id: 'signup_form'
+    });
     try {
       const response = await apiClient.post<ApiSuccessResponse<AuthTokens>>(
         '/auth/register',
@@ -116,6 +139,11 @@ export function RegisterForm() {
   }
 
   async function handleGoogleSuccess(idToken: string) {
+    pushToDataLayer({
+      event: 'sign_up_submit',
+      signup_method: 'google',
+      form_id: 'signup_form'
+    });
     setIsGoogleLoading(true);
     try {
       const response = await apiClient.post<ApiSuccessResponse<AuthTokens>>(

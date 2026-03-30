@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useTheme } from 'next-themes';
 
 import apiClient from '@/lib/api-client';
+import { pushToDataLayer } from '@/lib/gtm';
 import type { ApiErrorResponse } from '@/types/auth';
 import '@/styles/landing.css';
 
@@ -99,6 +100,30 @@ export default function LandingPage() {
     );
     els.forEach((el) => ro.observe(el));
     return () => ro.disconnect();
+  }, []);
+
+  // GTM: view_package when pricing section enters viewport (fire once)
+  useEffect(() => {
+    const pricingEl = document.getElementById('pricing');
+    if (!pricingEl) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          pushToDataLayer({
+            event: 'view_package',
+            package_list_name: 'Pricing Plans',
+            packages: [
+              { plan_id: 'free_monthly', plan_name: 'Free', package_type: 'free', price: 0 },
+              { plan_id: 'creator_monthly', plan_name: 'Creator', package_type: 'paid', price: 10 }
+            ]
+          });
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.3 }
+    );
+    obs.observe(pricingEl);
+    return () => obs.disconnect();
   }, []);
 
   // hero count-up animations
@@ -227,7 +252,15 @@ export default function LandingPage() {
           <Link href='/login' className='btn-outline'>
             Log in
           </Link>
-          <Link href='/register' className='btn-primary'>
+          <Link
+            href='/register'
+            className='btn-primary'
+            onClick={() => pushToDataLayer({
+              event: 'cta_click',
+              cta_name: 'Start free',
+              cta_position: 'nav'
+            })}
+          >
             Start free &rarr;
           </Link>
         </div>
@@ -283,7 +316,15 @@ export default function LandingPage() {
               guessing. Start knowing.
             </p>
             <div className='hero-ctas fu4'>
-              <Link href='/register' className='hero-cta-main'>
+              <Link
+                href='/register'
+                className='hero-cta-main'
+                onClick={() => pushToDataLayer({
+                  event: 'cta_click',
+                  cta_name: 'Analyse my script free',
+                  cta_position: 'hero_section'
+                })}
+              >
                 Analyse my script free &rarr;
               </Link>
               <span
@@ -846,7 +887,17 @@ export default function LandingPage() {
                 <div className='p-feat off'>Analysis history</div>
                 <div className='p-feat off'>8 languages</div>
               </div>
-              <Link href='/register' className='p-cta outlined'>
+              <Link
+                href='/register'
+                className='p-cta outlined'
+                onClick={() => pushToDataLayer({
+                  event: 'select_package',
+                  plan_name: 'Free',
+                  plan_id: 'free_monthly',
+                  package_type: 'free',
+                  cta_name: 'Start free'
+                })}
+              >
                 Start free &rarr;
               </Link>
             </div>
@@ -880,7 +931,17 @@ export default function LandingPage() {
                 <div className='p-feat'>Analysis history</div>
                 <div className='p-feat'>8 languages with RTL support</div>
               </div>
-              <Link href='/register' className='p-cta solid'>
+              <Link
+                href='/register'
+                className='p-cta solid'
+                onClick={() => pushToDataLayer({
+                  event: 'select_package',
+                  plan_name: 'Creator',
+                  plan_id: 'creator_monthly',
+                  package_type: 'paid',
+                  cta_name: 'Get Creator'
+                })}
+              >
                 Get Creator &rarr;
               </Link>
             </div>

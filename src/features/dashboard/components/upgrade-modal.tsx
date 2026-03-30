@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { IconCheck, IconX } from '@tabler/icons-react';
 import apiClient from '@/lib/api-client';
 import { toast } from 'sonner';
+import { pushToDataLayer, generateEventId } from '@/lib/gtm';
 
 interface UpgradeModalProps {
   open: boolean;
@@ -29,11 +30,24 @@ export function UpgradeModal({
 
   async function handleUpgrade() {
     onUpgradeClick?.();
+    pushToDataLayer({
+      event: 'add_to_cart',
+      plan_id: 'creator_monthly',
+      package_type: 'paid',
+      value: 10
+    });
     setLoading(true);
     try {
       const res = await apiClient.post('/api/create-checkout');
       const checkoutUrl = res.data?.data?.checkoutUrl || res.data?.data?.url;
       if (checkoutUrl) {
+        pushToDataLayer({
+          event: 'begin_checkout',
+          event_id: generateEventId('checkout'),
+          value: 10,
+          currency: 'USD',
+          payment_provider: 'stripe'
+        });
         window.location.href = checkoutUrl;
       } else {
         toast.error('Could not create checkout session');

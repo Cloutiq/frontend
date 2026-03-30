@@ -24,6 +24,7 @@ import {
   clearAuthCookies
 } from '@/lib/auth-cookie';
 import { identifyUser, trackUserLoggedIn } from '@/lib/analytics';
+import { pushToDataLayer, generateEventId } from '@/lib/gtm';
 import type {
   ApiErrorResponse,
   ApiSuccessResponse,
@@ -88,6 +89,11 @@ export function LoginForm() {
       try {
         identifyUser(u);
         trackUserLoggedIn(u.id, authMethod);
+        pushToDataLayer({
+          event: 'login',
+          event_id: generateEventId('login'),
+          user_id: u.id
+        });
       } catch {}
       const dest = u.role === 'ADMIN' ? '/admin' : redirectTo;
       window.location.href = dest;

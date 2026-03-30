@@ -27,6 +27,7 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import type { ApiErrorResponse, ApiSuccessResponse, User, BillingHistoryEntry } from '@/types/auth';
+import { pushToDataLayer, generateEventId } from '@/lib/gtm';
 
 const changePasswordSchema = z.object({
   oldPassword: z.string().min(1, 'Current password is required'),
@@ -333,10 +334,23 @@ function SubscriptionSection({
   }
 
   async function handleUpgrade() {
+    pushToDataLayer({
+      event: 'add_to_cart',
+      plan_id: 'creator_monthly',
+      package_type: 'paid',
+      value: 10
+    });
     try {
       const res = await apiClient.post<ApiSuccessResponse<{ url: string }>>(
         '/api/create-checkout'
       );
+      pushToDataLayer({
+        event: 'begin_checkout',
+        event_id: generateEventId('checkout'),
+        value: 10,
+        currency: 'USD',
+        payment_provider: 'stripe'
+      });
       window.location.href = res.data.data.url;
     } catch (error) {
       const msg =
