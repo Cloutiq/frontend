@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'sonner';
-import { AxiosError } from 'axios';
+import axios, { AxiosError } from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   IconUpload,
@@ -301,10 +301,18 @@ export default function DashboardPage() {
         formData.append('language', selectedLanguage);
       }
 
-      const res = await apiClient.post('/api/transcribe', formData, {
-        headers: { 'Content-Type': undefined as unknown as string },
-        timeout: 0
-      });
+      // Post directly to backend API (bypass Vercel proxy which has body size limits)
+      const { accessToken } = useAuthStore.getState();
+      const res = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/transcribe`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          },
+          timeout: 0
+        }
+      );
 
       const data = res.data.data;
 
