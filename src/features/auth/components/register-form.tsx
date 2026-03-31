@@ -61,15 +61,16 @@ export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   // If user is already authenticated (e.g. browser back from dashboard),
-  // redirect them back instead of clearing their session.
-  // Also handle bfcache restoration via pageshow event.
+  // replace this history entry so back button skips over register entirely.
   useEffect(() => {
     function redirectIfAuthenticated() {
       const rt = getRefreshTokenCookie();
       if (rt) {
-        window.location.href = '/dashboard';
+        setIsRedirecting(true);
+        window.location.replace('/dashboard');
       }
     }
     redirectIfAuthenticated();
@@ -131,8 +132,8 @@ export function RegisterForm() {
       setAuthCookies('USER');
     }
 
-    // Full page load — AuthGuard on /dashboard will restore session from cookie
-    window.location.href = '/dashboard';
+    // Replace history entry so back button doesn't return to register page
+    window.location.replace('/dashboard');
   }
 
   async function onSubmit(formData: RegisterFormData) {
@@ -196,6 +197,15 @@ export function RegisterForm() {
   }
 
   const isLoading = isSubmitting || isGoogleLoading;
+
+  // Don't flash the register form — show spinner while redirecting
+  if (isRedirecting) {
+    return (
+      <div className='flex min-h-[300px] items-center justify-center'>
+        <div className='size-6 animate-spin rounded-full border-2 border-primary border-t-transparent' />
+      </div>
+    );
+  }
 
   return (
     <div className='flex flex-col gap-6 px-4 py-6 sm:p-8'>

@@ -8,6 +8,7 @@ import { useTheme } from 'next-themes';
 
 import apiClient from '@/lib/api-client';
 import { pushToDataLayer } from '@/lib/gtm';
+import { getRefreshTokenCookie } from '@/lib/auth-cookie';
 import type { ApiErrorResponse } from '@/types/auth';
 import '@/styles/landing.css';
 
@@ -67,6 +68,22 @@ export default function LandingPage() {
   const [ctaEmail, setCtaEmail] = useState('');
   const [ctaSubmitted, setCtaSubmitted] = useState(false);
   const [ctaLoading, setCtaLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Check auth state for nav buttons
+  useEffect(() => {
+    const rt = getRefreshTokenCookie();
+    if (rt) setIsLoggedIn(true);
+
+    function handlePageShow(e: PageTransitionEvent) {
+      if (e.persisted) {
+        const rt = getRefreshTokenCookie();
+        setIsLoggedIn(!!rt);
+      }
+    }
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
 
   // refs for animated elements
   const heroScoreRef = useRef<HTMLDivElement>(null);
@@ -249,20 +266,28 @@ export default function LandingPage() {
               &#9728;&#65039;
             </button>
           </div>
-          <Link href='/login' className='btn-outline'>
-            Log in
-          </Link>
-          <Link
-            href='/register'
-            className='btn-primary'
-            onClick={() => pushToDataLayer({
-              event: 'cta_click',
-              cta_name: 'Start free',
-              cta_position: 'nav'
-            })}
-          >
-            Start free &rarr;
-          </Link>
+          {isLoggedIn ? (
+            <Link href='/dashboard' className='btn-primary'>
+              Dashboard &rarr;
+            </Link>
+          ) : (
+            <>
+              <Link href='/login' className='btn-outline'>
+                Log in
+              </Link>
+              <Link
+                href='/register'
+                className='btn-primary'
+                onClick={() => pushToDataLayer({
+                  event: 'cta_click',
+                  cta_name: 'Start free',
+                  cta_position: 'nav'
+                })}
+              >
+                Start free &rarr;
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 

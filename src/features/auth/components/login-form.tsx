@@ -48,15 +48,16 @@ export function LoginForm() {
   const { setTokens } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   // If user is already authenticated (e.g. browser back from dashboard),
-  // redirect them back instead of clearing their session.
-  // Also handle bfcache restoration via pageshow event.
+  // replace this history entry so back button skips over login entirely.
   useEffect(() => {
     function redirectIfAuthenticated() {
       const rt = getRefreshTokenCookie();
       if (rt) {
-        window.location.href = redirectTo;
+        setIsRedirecting(true);
+        window.location.replace(redirectTo);
       }
     }
     redirectIfAuthenticated();
@@ -111,11 +112,11 @@ export function LoginForm() {
         });
       } catch {}
       const dest = u.role === 'ADMIN' ? '/admin' : redirectTo;
-      window.location.href = dest;
+      window.location.replace(dest);
     } catch {
       // Fallback: redirect without role info
       setAuthCookies('USER');
-      window.location.href = redirectTo;
+      window.location.replace(redirectTo);
     }
   }
 
@@ -162,6 +163,15 @@ export function LoginForm() {
   }
 
   const isLoading = isSubmitting || isGoogleLoading;
+
+  // Don't flash the login form — show spinner while redirecting
+  if (isRedirecting) {
+    return (
+      <div className='flex min-h-[300px] items-center justify-center'>
+        <div className='size-6 animate-spin rounded-full border-2 border-primary border-t-transparent' />
+      </div>
+    );
+  }
 
   return (
     <div className='flex flex-col gap-6 px-4 py-6 sm:p-8'>
