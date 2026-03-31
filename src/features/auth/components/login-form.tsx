@@ -50,13 +50,22 @@ export function LoginForm() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // If user is already authenticated (e.g. browser back from dashboard),
-  // redirect them back instead of clearing their session
+  // redirect them back instead of clearing their session.
+  // Also handle bfcache restoration via pageshow event.
   useEffect(() => {
-    const rt = getRefreshTokenCookie();
-    if (rt) {
-      const dest = redirectTo;
-      window.location.href = dest;
+    function redirectIfAuthenticated() {
+      const rt = getRefreshTokenCookie();
+      if (rt) {
+        window.location.href = redirectTo;
+      }
     }
+    redirectIfAuthenticated();
+
+    function handlePageShow(e: PageTransitionEvent) {
+      if (e.persisted) redirectIfAuthenticated();
+    }
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
   }, [redirectTo]);
 
   const {
