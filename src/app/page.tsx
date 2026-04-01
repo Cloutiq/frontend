@@ -12,8 +12,7 @@ import { pushToDataLayer } from '@/lib/gtm';
 import {
   getRefreshTokenCookie,
   setRefreshTokenCookie,
-  setAuthCookies,
-  clearAuthCookies
+  setAuthCookies
 } from '@/lib/auth-cookie';
 import { useAuthStore } from '@/stores/auth.store';
 import type { ApiErrorResponse } from '@/types/auth';
@@ -89,26 +88,37 @@ export default function LandingPage() {
     }
   }, [storeUser]);
 
-  // Check auth state for nav buttons + fetch plan/role
-  // Uses raw axios to avoid apiClient's global logout interceptor on this public page
+  // Check auth state for nav buttons + fetch plan/role.
+  // Uses raw axios to avoid apiClient's global logout interceptor on this public page.
   useEffect(() => {
+    // If Zustand already has user data (soft navigation from a protected page),
+    // use it directly — no API calls needed. Avoids rotating the one-time-use
+    // refresh token which would invalidate the cookie and corrupt the session.
+    const store = useAuthStore.getState();
+    if (store.user && store.accessToken) {
+      setIsLoggedIn(true);
+      setUserPlan(store.user.plan);
+      setUserRole(store.user.role);
+      return;
+    }
+
+    // Hard navigation — Zustand is empty, try cookie-based restore
     const rt = getRefreshTokenCookie();
     if (!rt) return;
 
-    setIsLoggedIn(true);
+    setIsLoggedIn(true); // optimistic — show Dashboard button while loading
+
+    let cancelled = false;
 
     async function fetchProfile() {
       try {
-        // Refresh to get an access token (Zustand is empty after hard navigation)
         const refreshRes = await axios.post('/backend/auth/refresh', {
           refreshToken: rt
         });
+        if (cancelled) return;
         const { accessToken, refreshToken: newRt } = refreshRes.data.data;
         setRefreshTokenCookie(newRt);
-        setAuthCookies(refreshRes.data.data.role || 'USER');
 
-        // Hydrate Zustand so subsequent apiClient calls work
-        const store = useAuthStore.getState();
         store.setTokens(accessToken, newRt);
 
         const whoRes = await axios.get('/backend/auth/who-am-i', {
@@ -117,6 +127,7 @@ export default function LandingPage() {
             'Cache-Control': 'no-store'
           }
         });
+        if (cancelled) return;
         const u = whoRes.data?.data;
         if (u) {
           setUserPlan(u.plan || null);
@@ -125,13 +136,16 @@ export default function LandingPage() {
           store.setUser(u);
         }
       } catch {
-        // Refresh token expired or invalid — clear stale auth state silently
+        if (cancelled) return;
+        // Cookie expired — update UI only. Don't clear Zustand or cookies:
+        // Zustand is already empty (hard nav) and clearing cookies here would
+        // race with a valid session if the user navigates away mid-fetch.
         setIsLoggedIn(false);
-        clearAuthCookies();
-        useAuthStore.getState().logout();
       }
     }
     fetchProfile();
+
+    return () => { cancelled = true; };
   }, []);
 
   // refs for animated elements
