@@ -94,7 +94,7 @@ export default function SettingsPage() {
       </h1>
 
       {/* ── Card 1: Account ────────────────────────────── */}
-      <div className='card-glow mb-6 max-w-7xl'>
+      <div className='card-glow mb-6 max-w-[1022px]'>
         {/* Header row: avatar + name/email + plan badge */}
         <div className='flex items-center gap-4 border-b border-border/50 p-6'>
           <div className='flex size-12 shrink-0 items-center justify-center rounded-sm bg-primary/10'>
@@ -232,7 +232,7 @@ export default function SettingsPage() {
 
       {/* ── Card 2: Plan & Billing — non-admin only ──── */}
       {!isAdmin && (
-        <div className='card-glow mb-6 max-w-7xl'>
+        <div className='card-glow mb-6 max-w-[1022px]'>
           <SubscriptionSection user={user} onRefresh={refreshUser} />
           <BillingHistorySection />
         </div>
