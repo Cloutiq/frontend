@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -7,15 +8,20 @@ export const metadata: Metadata = {
     'Terms of Service for CloutIQ — AI-powered content intelligence for short-form video creators.'
 };
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const cookieStore = await cookies();
+  const isLoggedIn = cookieStore.get('cloutiq_auth')?.value === '1';
+  const backHref = isLoggedIn ? '/dashboard' : '/';
+  const backLabel = isLoggedIn ? 'Back to dashboard' : 'Back to home';
+
   return (
     <div className='min-h-screen bg-background'>
       <div className='mx-auto max-w-3xl px-6 py-12'>
         <Link
-          href='/'
+          href={backHref}
           className='mb-8 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground'
         >
-          &larr; Back to home
+          &larr; {backLabel}
         </Link>
 
         <div className='card-glow p-8'>

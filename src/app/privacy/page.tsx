@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import type { Metadata } from 'next';
 import fs from 'fs';
 import path from 'path';
@@ -9,7 +10,12 @@ export const metadata: Metadata = {
     'Privacy Policy for CloutIQ — AI-powered content intelligence for short-form video creators.'
 };
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const cookieStore = await cookies();
+  const isLoggedIn = cookieStore.get('cloutiq_auth')?.value === '1';
+  const backHref = isLoggedIn ? '/dashboard' : '/';
+  const backLabel = isLoggedIn ? 'Back to dashboard' : 'Back to home';
+
   const htmlPath = path.join(
     process.cwd(),
     'src/app/privacy/privacy-content.html'
@@ -20,10 +26,10 @@ export default function PrivacyPage() {
     <div className='min-h-screen bg-background'>
       <div className='mx-auto max-w-3xl px-6 py-12'>
         <Link
-          href='/'
+          href={backHref}
           className='mb-8 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground'
         >
-          &larr; Back to home
+          &larr; {backLabel}
         </Link>
 
         <div className='card-glow p-8'>
