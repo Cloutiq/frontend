@@ -627,9 +627,9 @@ export default function AdminPage() {
                     <th className='px-5 py-3 text-left font-mono text-xs uppercase tracking-wider text-muted-foreground'>
                       Plan
                     </th>
-                    <th className='px-5 py-3 text-left font-mono text-xs uppercase tracking-wider text-muted-foreground'>
+                    {/* <th className='px-5 py-3 text-left font-mono text-xs uppercase tracking-wider text-muted-foreground'>
                       This Month
-                    </th>
+                    </th> */}
                     <th className='px-5 py-3 text-left font-mono text-xs uppercase tracking-wider text-muted-foreground'>
                       Total
                     </th>
@@ -671,8 +671,8 @@ export default function AdminPage() {
                         />
                       </td>
 
-                      {/* This Month */}
-                      <td className='px-5 py-3'>
+                      {/* This Month — hidden for now */}
+                      {/* <td className='px-5 py-3'>
                         <span
                           className={cn(
                             'font-mono text-sm',
@@ -681,7 +681,7 @@ export default function AdminPage() {
                         >
                           {user.analysesThisMonth}
                         </span>
-                      </td>
+                      </td> */}
 
                       {/* Total */}
                       <td className='px-5 py-3'>

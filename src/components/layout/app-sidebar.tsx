@@ -36,7 +36,10 @@ export default function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size='lg' asChild>
-              <Link href={isAdmin ? '/admin' : '/dashboard'}>
+              <Link
+                href={isAdmin ? '/admin' : '/dashboard'}
+                onClick={() => isMobile && setOpenMobile(false)}
+              >
                 <div className='bg-primary text-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center rounded-sm'>
                   <span className='font-heading text-sm font-bold'>CQ</span>
                 </div>
@@ -68,7 +71,10 @@ export default function AppSidebar() {
                     isActive={isActive}
                     className='py-2 px-3 text-sm font-medium'
                   >
-                    <Link href={item.url}>
+                    <Link
+                      href={item.url}
+                      onClick={() => isMobile && setOpenMobile(false)}
+                    >
                       <Icon />
                       <span>{item.title}</span>
                     </Link>
