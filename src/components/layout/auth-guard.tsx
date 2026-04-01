@@ -24,7 +24,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const restoreAttempted = useRef(false);
-  const historyTrapped = useRef(false);
 
   useEffect(() => {
     // Only attempt restore once to avoid loops
@@ -110,9 +109,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   // current URL, keeping the user inside the app. This does NOT affect Next.js
   // client-side navigation (<Link>, router.push) since those use pushState
   // directly without triggering popstate.
+  // No ref guard — must re-register on every mount so in-app navigation
+  // (e.g. /admin → /settings) doesn't leave the listener detached.
   useEffect(() => {
-    if (!ready || !user || historyTrapped.current) return;
-    historyTrapped.current = true;
+    if (!ready || !user) return;
     window.history.pushState(null, '', window.location.href);
 
     function handlePopstate() {
