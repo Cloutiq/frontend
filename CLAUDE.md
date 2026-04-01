@@ -90,7 +90,10 @@ CloutIQ uses its own JWT auth backend. Clerk is from the starter template and mu
 - **Refresh token:** opaque hex, 7-day expiry, rotates on each refresh (one-time use)
 - **Regular users:** email/password registration OR Google OAuth → `POST /auth/google` with Google ID token
 - **Admin login:** email/password → `POST /auth/login`
-- **Token refresh flow:** 401 → `POST /auth/refresh` → retry request → if refresh fails → redirect to `/login`
+- **Token refresh flow:** 401 → api-client interceptor checks Zustand `refreshToken`, falls back to `getRefreshTokenCookie()` → `POST /auth/refresh` → retry request → if refresh fails → redirect to `/login`
+- **Refresh token is one-time use** — each call to `POST /auth/refresh` rotates the token. NEVER call refresh unnecessarily (e.g., if Zustand already has a valid access token). The landing page checks Zustand first before attempting a cookie-based refresh.
+- **Back-button protection:** AuthGuard uses `popstate` event listener + `history.pushState` to prevent browser back from leaving the app. The listener re-registers on every mount (no ref guard) to survive in-app navigation.
+- **Auth page protection:** `AuthLayout` wraps all auth pages (login, register, forgot-password, reset-password, verify-email). On mount, checks for `cloutiq_rt` cookie and redirects to dashboard/admin. Also reloads on `pageshow` (bfcache). Middleware also redirects authenticated users away from auth routes at the edge.
 - **`mustChangeCredentials`:** when `true`, block all navigation, force `PATCH /auth/change-credentials` (admin-created accounts only). All other protected endpoints return 403 until credentials are changed.
 - **Email verification:** registration and login may return `{ status: 'verification_pending', email }` instead of tokens → redirect to `/verify-email?email={email}` for 6-digit OTP entry → `POST /auth/verify-email` → tokens returned on success
 - **Account linking:** If a user registered with email/password and later signs in with Google (same email), backend silently links the Google account. Either method works after linking.
@@ -238,7 +241,8 @@ type BillingHistoryEntry = {
 
 ### 1. Landing (`/`) — Public
 - Full marketing page with custom CSS (`src/styles/landing.css`)
-- **Auth-aware:** checks `getRefreshTokenCookie()` on load + `pageshow` event; shows "Dashboard" button when logged in, "Log in" / "Start free" when not
+- **Auth-aware:** checks Zustand store first (soft nav), falls back to cookie-based token refresh (hard nav). Shows role-aware "Dashboard" button when logged in (admin → `/admin`, user → `/dashboard`), "Log in" / "Start free" when not. Uses raw `axios` (NOT `apiClient`) to avoid global logout interceptor on this public page. On refresh failure, only updates UI — never clears Zustand or cookies (prevents race conditions with valid sessions).
+- **Pricing section:** hidden for authenticated ADMIN or CREATOR users
 - Fonts: Instrument Serif, DM Sans, DM Mono (loaded via Google Fonts in layout)
 - Sections: nav (with dark/light toggle), ticker, hero with animated score card, logo wall, problem section, before/after comparison, how it works, features, who it's for, pricing (Free/Creator/Agency), testimonials, FAQ (accordion), bottom CTA with email capture, footer
 - Email capture → `POST /api/waitlist`
@@ -255,16 +259,16 @@ type BillingHistoryEntry = {
 - Handle `mustChangeCredentials: true` → redirect to change-credentials page
 - Handle Google-only user error → show message + "Login with Google" button
 - Handle `verification_pending` response → redirect to `/verify-email?email={email}`
-- Back-button aware: uses `pageshow` event to redirect authenticated users away via `window.location.replace()`
+- On success: `window.location.replace(dest)` removes `/login` from browser history
+- **Auth pages use `AuthLayout`** which has: (1) client-side redirect if refresh token cookie exists (role-aware), (2) `pageshow` reload for bfcache safety — zero flash
 
 ### 3. Register (`/register`) — Public
 - Name, email, password form with client-side validation (8+ chars, 1 uppercase, 1 number)
 - "Sign up with Google" button
 - "Already have an account? Login" link → `/login`
 - Consent line: "By creating an account you agree to our Terms of Service and Privacy Policy" (linked)
-- On success: store tokens, redirect to `/dashboard`
+- On success: `window.location.replace('/dashboard')` removes `/register` from history
 - Handle `verification_pending` response → redirect to `/verify-email?email={email}`
-- Back-button aware: same `pageshow` redirect as login
 
 ### 4. Verify Email (`/verify-email?email=...`) — Public
 - 6-digit OTP input (auto-submits when all digits entered)
@@ -315,8 +319,8 @@ type BillingHistoryEntry = {
   - Canceling: plan name, access-until date, warning message, "Resume Subscription" button with confirmation modal
   - Free: usage info, "Upgrade to Creator — $10/month" button with Stripe consent line
   - Cancel → `POST /api/cancel-subscription`, Resume → `POST /api/resume-subscription`
-- **Billing history section** (non-admin only): fetches from `GET /api/billing-history`, shows date/event/amount table
-- Password section: uses `hasPassword` from backend — "Set Password" when false, "Change Password" when true
+- **Billing history section** (non-admin only): fetches from `GET /api/billing-history`, shows date/event/amount table, client-side pagination (10 entries/page, Prev/Next buttons)
+- **Password section:** "Change Password" or "Set Password" button in the Account card opens a shadcn `<Dialog>`. Uses `hasPassword` from backend to decide which form. On success: dialog closes + sonner toast. On error: stays open with error.
 
 ### 9. History (`/history`) — Auth Required
 - Paginated list of past analyses
