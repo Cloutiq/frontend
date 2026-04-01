@@ -88,7 +88,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className='max-w-2xl flex-1 p-4 sm:p-6 md:p-8'>
+    <div className='mx-auto max-w-2xl flex-1 p-4 sm:p-6 md:p-8'>
       <h1 className='mb-6 font-heading text-2xl font-bold text-foreground'>
         Settings
       </h1>
