@@ -69,11 +69,19 @@ export default function LandingPage() {
   const [ctaSubmitted, setCtaSubmitted] = useState(false);
   const [ctaLoading, setCtaLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userPlan, setUserPlan] = useState<string | null>(null);
 
-  // Check auth state for nav buttons
+  // Check auth state for nav buttons + fetch plan
   useEffect(() => {
     const rt = getRefreshTokenCookie();
-    if (rt) setIsLoggedIn(true);
+    if (rt) {
+      setIsLoggedIn(true);
+      // Fetch plan to conditionally hide pricing for CREATOR users
+      apiClient
+        .get('/auth/who-am-i')
+        .then((res) => setUserPlan(res.data?.data?.plan || null))
+        .catch(() => {});
+    }
 
     function handlePageShow(e: PageTransitionEvent) {
       if (e.persisted) {
@@ -872,7 +880,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── PRICING ── */}
+      {/* ── PRICING — hidden for CREATOR users ── */}
+      {userPlan !== 'CREATOR' && (
       <section
         id='pricing'
         style={{ borderBottom: '1px solid var(--border)' }}
@@ -959,13 +968,16 @@ export default function LandingPage() {
               <Link
                 href='/register'
                 className='p-cta solid'
-                onClick={() => pushToDataLayer({
-                  event: 'select_package',
-                  plan_name: 'Creator',
-                  plan_id: 'creator_monthly',
-                  package_type: 'paid',
-                  cta_name: 'Get Creator'
-                })}
+                onClick={() => {
+                  sessionStorage.setItem('from_pricing_creator', '1');
+                  pushToDataLayer({
+                    event: 'select_package',
+                    plan_name: 'Creator',
+                    plan_id: 'creator_monthly',
+                    package_type: 'paid',
+                    cta_name: 'Get Creator'
+                  });
+                }}
               >
                 Get Creator &rarr;
               </Link>
@@ -1004,6 +1016,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      )}
 
       {/* ── TESTIMONIALS ── */}
       <section

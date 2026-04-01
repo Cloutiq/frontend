@@ -112,7 +112,15 @@ export function LoginForm() {
           user_id: u.id
         });
       } catch {}
-      const dest = u.role === 'ADMIN' ? '/admin' : redirectTo;
+      // If user came from landing page "Get Creator" and is FREE, show upgrade modal
+      let dest = u.role === 'ADMIN' ? '/admin' : redirectTo;
+      const fromPricing = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('from_pricing_creator');
+      if (fromPricing && u.plan === 'FREE' && u.role !== 'ADMIN') {
+        sessionStorage.removeItem('from_pricing_creator');
+        dest = '/dashboard?upgrade=true';
+      } else if (fromPricing) {
+        sessionStorage.removeItem('from_pricing_creator');
+      }
       window.location.replace(dest);
     } catch {
       // Fallback: redirect without role info

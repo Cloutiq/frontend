@@ -12,6 +12,7 @@ interface UpgradeModalProps {
   open: boolean;
   onClose: () => void;
   onUpgradeClick?: () => void;
+  variant?: 'limit' | 'promo';
 }
 
 const benefits = [
@@ -24,7 +25,8 @@ const benefits = [
 export function UpgradeModal({
   open,
   onClose,
-  onUpgradeClick
+  onUpgradeClick,
+  variant = 'limit'
 }: UpgradeModalProps) {
   const [loading, setLoading] = useState(false);
 
@@ -89,10 +91,14 @@ export function UpgradeModal({
             </button>
 
             <h2 className='font-heading text-2xl font-bold text-foreground'>
-              You&apos;ve reached your limit
+              {variant === 'promo'
+                ? 'Unlock unlimited analyses'
+                : 'You\u2019ve reached your limit'}
             </h2>
             <p className='mt-1 font-mono text-[12px] text-muted-foreground'>
-              <span className='text-score-low'>3</span>/3 free analyses used this month
+              {variant === 'promo'
+                ? 'Go Creator to analyse every script, every day.'
+                : <><span className='text-score-low'>3</span>/3 free analyses used this month</>}
             </p>
 
             <div className='mt-6 flex flex-col gap-3'>

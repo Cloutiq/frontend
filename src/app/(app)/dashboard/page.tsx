@@ -133,6 +133,7 @@ export default function DashboardPage() {
   const [analyzeWithTranscription, setAnalyzeWithTranscription] =
     useState(true);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeVariant, setUpgradeVariant] = useState<'limit' | 'promo'>('limit');
   const [progress, setProgress] = useState(0);
   const [loadingMode, setLoadingMode] = useState<LoadingMode>('analyze');
   const [messageIndex, setMessageIndex] = useState(0);
@@ -185,6 +186,27 @@ export default function DashboardPage() {
       }
     })();
   }, []);
+
+  // Handle ?upgrade=true from pricing → login flow, or sessionStorage flag from pricing → register → onboarding
+  useEffect(() => {
+    // Wait until onboarding is complete before showing upgrade modal
+    if (!user || (user.role !== 'ADMIN' && !user.onboardingCompleted)) return;
+
+    const fromUrl = searchParams.get('upgrade') === 'true';
+    const fromSession =
+      typeof sessionStorage !== 'undefined' &&
+      sessionStorage.getItem('from_pricing_creator') === '1';
+
+    if (fromUrl || fromSession) {
+      if (fromSession) sessionStorage.removeItem('from_pricing_creator');
+      if (fromUrl) window.history.replaceState({}, '', '/dashboard');
+      // Only show if user is FREE (CREATOR users don't need it)
+      if (user.plan === 'FREE') {
+        setUpgradeVariant('promo');
+        setShowUpgradeModal(true);
+      }
+    }
+  }, [user?.plan, user?.onboardingCompleted]);
 
   // Progress bar + rotating messages tied to loading state
   useEffect(() => {
@@ -656,7 +678,11 @@ export default function DashboardPage() {
 
           <UpgradeModal
             open={showUpgradeModal}
-            onClose={() => setShowUpgradeModal(false)}
+            onClose={() => {
+              setShowUpgradeModal(false);
+              setUpgradeVariant('limit');
+            }}
+            variant={upgradeVariant}
             onUpgradeClick={() => {
               try {
                 if (user?.id) trackUpgradeClicked(user.id);
