@@ -194,7 +194,6 @@ export default function SettingsPage() {
         {/* Password button inside account card */}
         <div className='border-t border-border/50 px-6 py-4'>
           <Button
-            variant='outline'
             size='sm'
             className='h-8 text-xs'
             onClick={() => setShowPasswordDialog(true)}
