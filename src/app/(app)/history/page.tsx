@@ -11,22 +11,20 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconEye,
-  IconAlertTriangle
+  IconAlertTriangle,
+  IconArrowLeft,
+  IconLoader2
 } from '@tabler/icons-react';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
 import { useAuthStore } from '@/stores/auth.store';
 import apiClient from '@/lib/api-client';
 import { getScoreColor } from '@/lib/score-utils';
+import { AnalysisResults } from '@/features/analysis/components/analysis-results';
 import type { ApiErrorResponse, ApiSuccessResponse } from '@/types/auth';
+import type { AnalysisResult, AnalysisLanguage } from '@/types/analysis';
 
 // Support both camelCase (NestJS default) and snake_case field names
 interface HistoryEntryRaw {
@@ -38,6 +36,8 @@ interface HistoryEntryRaw {
   viralScore?: number;
   created_at?: string;
   createdAt?: string;
+  result?: AnalysisResult;
+  analysis_result?: AnalysisResult;
 }
 
 interface HistoryEntry {
@@ -46,6 +46,7 @@ interface HistoryEntry {
   language: string;
   viralScore: number;
   createdAt: string;
+  result?: AnalysisResult;
 }
 
 interface HistoryMeta {
@@ -66,7 +67,8 @@ function normalizeEntry(raw: HistoryEntryRaw): HistoryEntry {
     scriptText: raw.scriptText || raw.script_text || '',
     language: raw.language || 'en',
     viralScore: raw.viralScore ?? raw.viral_score ?? 0,
-    createdAt: raw.createdAt || raw.created_at || ''
+    createdAt: raw.createdAt || raw.created_at || '',
+    result: raw.result || raw.analysis_result
   };
 }
 
@@ -102,6 +104,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchHistory = useCallback(
     async (p: number) => {
@@ -130,6 +133,26 @@ export default function HistoryPage() {
       }
     },
     [user?.id]
+  );
+
+  const handleViewDetails = useCallback(
+    async (entry: HistoryEntry) => {
+      // Fetch full analysis from detail endpoint (history list truncates scriptText)
+      setDetailLoading(true);
+      try {
+        const res = await apiClient.get<ApiSuccessResponse<HistoryEntryRaw>>(
+          `/api/analysis/${entry.id}`
+        );
+        const full = normalizeEntry(res.data.data);
+        setSelectedEntry(full);
+      } catch {
+        // Fallback: use data from list (may have truncated scriptText but has result)
+        setSelectedEntry(entry);
+      } finally {
+        setDetailLoading(false);
+      }
+    },
+    []
   );
 
   useEffect(() => {
@@ -272,7 +295,80 @@ export default function HistoryPage() {
     );
   }
 
-  // Data state
+  // Detail view — show full analysis
+  if (selectedEntry) {
+    const { date, time } = formatDate(selectedEntry.createdAt);
+    const langCode = languageCodes[selectedEntry.language] || selectedEntry.language.toUpperCase();
+
+    return (
+      <div className='flex-1 p-4 sm:p-6 md:p-8'>
+        <div className='mx-auto max-w-5xl'>
+          {/* Back button + header */}
+          <div className='mb-6'>
+            <Button
+              variant='ghost'
+              size='sm'
+              className='mb-3 gap-1.5 text-muted-foreground hover:text-foreground'
+              onClick={() => setSelectedEntry(null)}
+            >
+              <IconArrowLeft className='size-4' />
+              Back to History
+            </Button>
+            <div className='flex items-center justify-between'>
+              <div>
+                <h1 className='font-heading text-2xl font-bold text-foreground'>
+                  Analysis Details
+                </h1>
+                <p className='mt-1 text-sm text-muted-foreground'>
+                  {date} at {time}
+                </p>
+              </div>
+              <div className='flex items-center gap-2'>
+                <Badge variant='outline' className='font-mono text-[10px]'>
+                  {langCode}
+                </Badge>
+                <span
+                  className='font-heading text-3xl font-bold'
+                  style={{ color: getScoreColor(selectedEntry.viralScore) }}
+                >
+                  {selectedEntry.viralScore}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Full analysis results or fallback */}
+          {selectedEntry.result ? (
+            <AnalysisResults
+              analysis={{
+                id: selectedEntry.id,
+                viralScore: selectedEntry.viralScore,
+                result: selectedEntry.result
+              }}
+              scriptText={selectedEntry.scriptText}
+              language={(selectedEntry.language as AnalysisLanguage) || 'en'}
+            />
+          ) : (
+            <div className='card-glow p-6'>
+              <p className='mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground'>
+                Script
+              </p>
+              <div className='max-h-60 overflow-y-auto'>
+                <p className='whitespace-pre-wrap text-sm text-foreground'>
+                  {selectedEntry.scriptText || 'No script text available'}
+                </p>
+              </div>
+              <p className='mt-4 text-xs text-muted-foreground'>
+                Full analysis breakdown is not available for this entry. Run a new analysis to see the full AI breakdown.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Data state — list view
   return (
     <div className='flex-1 p-6 md:p-8'>
       <div className='mx-auto max-w-5xl'>
@@ -300,18 +396,18 @@ export default function HistoryPage() {
           {/* Mobile card rows */}
           <div className='flex flex-col gap-2 p-3 md:hidden'>
             {entries.map((entry) => {
-              const { date, time } = formatDate(entry.createdAt);
-              const langCode = languageCodes[entry.language] || entry.language.toUpperCase();
+              const { date: d, time: t } = formatDate(entry.createdAt);
+              const lc = languageCodes[entry.language] || entry.language.toUpperCase();
 
               return (
                 <div
                   key={entry.id}
-                  className='rounded-[4px] border border-border/50 p-3 transition-colors duration-150 active:bg-muted/20'
-                  onClick={() => setSelectedEntry(entry)}
+                  className='cursor-pointer rounded-[4px] border border-border/50 p-3 transition-colors duration-150 active:bg-muted/20'
+                  onClick={() => handleViewDetails(entry)}
                 >
                   <div className='flex items-center justify-between'>
                     <span className='font-mono text-[10px] text-muted-foreground'>
-                      {date} &middot; {time}
+                      {d} &middot; {t}
                     </span>
                     <span
                       className='font-heading text-xl font-bold'
@@ -325,7 +421,7 @@ export default function HistoryPage() {
                   </p>
                   <div className='mt-2 flex items-center gap-2'>
                     <Badge variant='outline' className='font-mono text-[10px]'>
-                      {langCode}
+                      {lc}
                     </Badge>
                     <span className='text-[10px] text-muted-foreground'>Tap to view</span>
                   </div>
@@ -337,8 +433,8 @@ export default function HistoryPage() {
           {/* Desktop table rows */}
           <div className='hidden md:block'>
             {entries.map((entry) => {
-              const { date, time } = formatDate(entry.createdAt);
-              const langCode = languageCodes[entry.language] || entry.language.toUpperCase();
+              const { date: d, time: t } = formatDate(entry.createdAt);
+              const lc = languageCodes[entry.language] || entry.language.toUpperCase();
 
               return (
                 <div
@@ -347,10 +443,10 @@ export default function HistoryPage() {
                 >
                   <div className='flex flex-col'>
                     <span className='font-mono text-xs text-muted-foreground'>
-                      {date}
+                      {d}
                     </span>
                     <span className='font-mono text-[10px] text-muted-foreground/70'>
-                      {time}
+                      {t}
                     </span>
                   </div>
                   <p className='truncate pr-4 text-sm text-foreground'>
@@ -359,7 +455,7 @@ export default function HistoryPage() {
                       : entry.scriptText || 'No script text'}
                   </p>
                   <Badge variant='outline' className='w-fit font-mono text-[10px]'>
-                    {langCode}
+                    {lc}
                   </Badge>
                   <span
                     className='font-heading text-xl font-bold'
@@ -371,9 +467,14 @@ export default function HistoryPage() {
                     variant='outline'
                     size='sm'
                     className='w-fit text-xs'
-                    onClick={() => setSelectedEntry(entry)}
+                    onClick={() => handleViewDetails(entry)}
+                    disabled={detailLoading}
                   >
-                    <IconEye className='mr-1 size-3' />
+                    {detailLoading ? (
+                      <IconLoader2 className='mr-1 size-3 animate-spin' />
+                    ) : (
+                      <IconEye className='mr-1 size-3' />
+                    )}
                     View Details
                   </Button>
                 </div>
@@ -414,70 +515,6 @@ export default function HistoryPage() {
           </div>
         )}
       </div>
-
-      {/* Detail dialog */}
-      <Dialog
-        open={!!selectedEntry}
-        onOpenChange={(open) => {
-          if (!open) setSelectedEntry(null);
-        }}
-      >
-        <DialogContent className='max-w-lg rounded-[6px]'>
-          <DialogHeader>
-            <DialogTitle className='font-heading text-xl font-bold'>
-              Analysis Details
-            </DialogTitle>
-          </DialogHeader>
-          {selectedEntry && (
-            <div className='flex flex-col gap-4'>
-              {/* Viral score hero */}
-              <div className='flex items-center gap-4'>
-                <span
-                  className='font-heading text-5xl font-bold'
-                  style={{
-                    color: getScoreColor(selectedEntry.viralScore)
-                  }}
-                >
-                  {selectedEntry.viralScore}
-                </span>
-                <div>
-                  <p className='text-sm text-muted-foreground'>Viral Score</p>
-                  <Badge
-                    variant='outline'
-                    className='mt-1 font-mono text-[10px]'
-                  >
-                    {languageCodes[selectedEntry.language] || selectedEntry.language.toUpperCase()}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Date */}
-              <p className='font-mono text-xs text-muted-foreground'>
-                Analysed on{' '}
-                {formatDate(selectedEntry.createdAt).date} at{' '}
-                {formatDate(selectedEntry.createdAt).time}
-              </p>
-
-              {/* Script text */}
-              <div>
-                <p className='mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground'>
-                  Script
-                </p>
-                <div className='card-glow max-h-60 overflow-y-auto p-3'>
-                  <p className='whitespace-pre-wrap text-sm text-foreground'>
-                    {selectedEntry.scriptText || 'No script text available'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Note */}
-              <p className='text-xs text-muted-foreground'>
-                Run a new analysis to see the full AI breakdown
-              </p>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -35,6 +35,7 @@ src/
 │   ├── register/            # Registration page (email/password + Google)
 │   ├── forgot-password/     # Forgot password (email form)
 │   ├── reset-password/      # Reset password (token from URL)
+│   ├── verify-email/        # Email verification (6-digit OTP)
 │   ├── dashboard/           # Main app (auth required)
 │   │   ├── page.tsx         # Script input + analysis output
 │   │   └── history/         # Past analyses list
@@ -91,6 +92,7 @@ CloutIQ uses its own JWT auth backend. Clerk is from the starter template and mu
 - **Admin login:** email/password → `POST /auth/login`
 - **Token refresh flow:** 401 → `POST /auth/refresh` → retry request → if refresh fails → redirect to `/login`
 - **`mustChangeCredentials`:** when `true`, block all navigation, force `PATCH /auth/change-credentials` (admin-created accounts only). All other protected endpoints return 403 until credentials are changed.
+- **Email verification:** registration and login may return `{ status: 'verification_pending', email }` instead of tokens → redirect to `/verify-email?email={email}` for 6-digit OTP entry → `POST /auth/verify-email` → tokens returned on success
 - **Account linking:** If a user registered with email/password and later signs in with Google (same email), backend silently links the Google account. Either method works after linking.
 
 ### Password States (for Settings page)
@@ -133,6 +135,8 @@ CloutIQ uses its own JWT auth backend. Clerk is from the starter template and mu
 | `/auth/set-password` | POST | Yes | Set password for Google-only users (password + confirmPassword) |
 | `/auth/forgot-password` | POST | No | Send password reset email (rate limited: 3/hour) |
 | `/auth/reset-password` | POST | No | Reset password with token from email link |
+| `/auth/verify-email` | POST | No | Verify 6-digit OTP code, returns tokens |
+| `/auth/resend-verification` | POST | No | Resend verification OTP (60s cooldown) |
 | `/users` | CRUD | Admin | User management |
 | `/api/analyze` | POST | Yes | Analyze script text |
 | `/api/transcribe` | POST | Yes | Transcribe file (multipart, max 500 MB, direct to backend) |
@@ -230,10 +234,11 @@ type BillingHistoryEntry = {
 - Counter resets automatically on 1st of each month (server-side cron)
 - Both `/api/analyze` and `/api/transcribe?analyze=true` count against limit
 
-## Pages (11 total)
+## Pages (12 total)
 
 ### 1. Landing (`/`) — Public
 - Full marketing page with custom CSS (`src/styles/landing.css`)
+- **Auth-aware:** checks `getRefreshTokenCookie()` on load + `pageshow` event; shows "Dashboard" button when logged in, "Log in" / "Start free" when not
 - Fonts: Instrument Serif, DM Sans, DM Mono (loaded via Google Fonts in layout)
 - Sections: nav (with dark/light toggle), ticker, hero with animated score card, logo wall, problem section, before/after comparison, how it works, features, who it's for, pricing (Free/Creator/Agency), testimonials, FAQ (accordion), bottom CTA with email capture, footer
 - Email capture → `POST /api/waitlist`
@@ -249,6 +254,8 @@ type BillingHistoryEntry = {
 - "Don't have an account? Sign Up" link → `/register`
 - Handle `mustChangeCredentials: true` → redirect to change-credentials page
 - Handle Google-only user error → show message + "Login with Google" button
+- Handle `verification_pending` response → redirect to `/verify-email?email={email}`
+- Back-button aware: uses `pageshow` event to redirect authenticated users away via `window.location.replace()`
 
 ### 3. Register (`/register`) — Public
 - Name, email, password form with client-side validation (8+ chars, 1 uppercase, 1 number)
@@ -256,21 +263,32 @@ type BillingHistoryEntry = {
 - "Already have an account? Login" link → `/login`
 - Consent line: "By creating an account you agree to our Terms of Service and Privacy Policy" (linked)
 - On success: store tokens, redirect to `/dashboard`
+- Handle `verification_pending` response → redirect to `/verify-email?email={email}`
+- Back-button aware: same `pageshow` redirect as login
 
-### 4. Forgot Password (`/forgot-password`) — Public
+### 4. Verify Email (`/verify-email?email=...`) — Public
+- 6-digit OTP input (auto-submits when all digits entered)
+- Calls `POST /auth/verify-email` with `{ email, code }`
+- On success: same token handling as normal login (store tokens, fetch `who-am-i`, redirect by role)
+- "Resend code" button with 60-second cooldown → `POST /auth/resend-verification`
+- Redirects to `/login` if no email query param
+- Component: `src/features/auth/components/verify-email-form.tsx`
+- Types: `VerificationPendingResponse`, `LoginResponse` union, `isVerificationPending()` guard in `src/types/auth.ts`
+
+### 5. Forgot Password (`/forgot-password`) — Public
 - Email input form
 - Submit → `POST /auth/forgot-password`
 - Always show success: "If that email exists, a reset link has been sent."
 - Handle 429 rate limit error
 
-### 5. Reset Password (`/reset-password?token=...`) — Public
+### 6. Reset Password (`/reset-password?token=...`) — Public
 - Read `token` from URL query string
 - New password + confirm password form
 - Submit → `POST /auth/reset-password` with token + passwords
 - On success → redirect to `/login` with success message
 - Handle invalid/expired token → show "Request new reset link" button
 
-### 6. Dashboard (`/dashboard`) — Auth Required
+### 7. Dashboard (`/dashboard`) — Auth Required
 - **Script input:** large textarea, language selector (8 languages: en/ar/hi/es/fr/de/tr/bn), "Analyze" button
 - **File upload:** drag-and-drop area, accepted formats (MP3/MP4/MOV/WAV, 500 MB), "Also analyze" toggle, language selector (when analyze on), "Transcribe" button
 - **Analysis output — 12 sections:**
@@ -289,7 +307,7 @@ type BillingHistoryEntry = {
 - **Usage counter** (FREE plan): "2/3 analyses used this month"
 - **Transcription output:** timestamped segments with start/end times
 
-### 7. Settings (`/settings`) — Auth Required
+### 8. Settings (`/settings`) — Auth Required
 - Profile info display (name, email, role, plan)
 - Creator Profile section (non-admin only): shows platform, niche, audience, view count, frustration + "Edit Profile" button reopens onboarding modal pre-filled
 - **Subscription section** (non-admin only):
@@ -300,13 +318,13 @@ type BillingHistoryEntry = {
 - **Billing history section** (non-admin only): fetches from `GET /api/billing-history`, shows date/event/amount table
 - Password section: uses `hasPassword` from backend — "Set Password" when false, "Change Password" when true
 
-### 8. History (`/history`) — Auth Required
+### 9. History (`/history`) — Auth Required
 - Paginated list of past analyses
 - Each entry: script preview (truncated), viral score, language, date
 - Click to expand full analysis result
 - `GET /api/creator/:id/history` (paginated)
 
-### 9. Terms (`/terms`) — Public
+### 10. Terms (`/terms`) — Public
 - Full Terms of Service text (effective March 26, 2026)
 - Server component, SEO indexable
 - Clean typography with numbered sections, bullet lists
@@ -314,14 +332,14 @@ type BillingHistoryEntry = {
 - T&C adjusted to only reflect features that are live on the platform (no references to unbuilt account deletion UI, team workspaces, automated email notifications, or opt-out mechanisms)
 - Contact: `team@cloutiq.ai`
 
-### 10. Privacy (`/privacy`) — Public
+### 11. Privacy (`/privacy`) — Public
 - Termly-generated privacy policy HTML embedded via `dangerouslySetInnerHTML`
 - HTML content stored in `src/app/privacy/privacy-content.html` (read at build time, `\r\n` normalized)
 - Server component, SEO indexable
 - Theme-aware CSS overrides in `globals.css` (`.privacy-termly-embed`) — forces white text in dark mode, dark text in light mode
 - Contact: `team@cloutiq.ai`
 
-### 11. Admin (`/admin`) — Auth Required, role: ADMIN
+### 12. Admin (`/admin`) — Auth Required, role: ADMIN
 - Non-admin users → 403 / redirect
 - User management table (CRUD via `/users` endpoints)
 - Stats dashboard: 8 stat cards (total users, new this month, free/creator breakdown, analyses today/week/month, revenue)
@@ -634,7 +652,7 @@ All cards use the `.card-glow` CSS class defined in `globals.css`:
 - Widget component: `src/components/chatwoot.tsx`
 - Loaded in root layout (`src/app/layout.tsx`)
 - Identifies logged-in users (name, email) to Chatwoot
-- Hidden on auth pages: `/login`, `/register`, `/forgot-password`, `/reset-password`
+- Hidden on auth pages: `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`
 - Env vars: `NEXT_PUBLIC_CHATWOOT_URL`, `NEXT_PUBLIC_CHATWOOT_TOKEN`
 
 ## Reference

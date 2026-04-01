@@ -49,6 +49,7 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [googleOnlyError, setGoogleOnlyError] = useState(false);
 
   // If user is already authenticated (e.g. browser back from dashboard),
   // replace this history entry so back button skips over login entirely.
@@ -139,6 +140,12 @@ export function LoginForm() {
       const message =
         axiosError.response?.data?.message?.[0] ||
         'Login failed. Please try again.';
+
+      // Handle Google-only user trying email/password login
+      if (message.toLowerCase().includes('no password set')) {
+        setGoogleOnlyError(true);
+      }
+
       toast.error(message);
     }
   }
@@ -270,6 +277,16 @@ export function LoginForm() {
           )}
         </Button>
       </form>
+
+      {/* Google-only account notice */}
+      {googleOnlyError && (
+        <div className='rounded-sm border border-score-mid/30 bg-score-mid/5 p-3'>
+          <p className='text-sm text-foreground'>
+            This account was created with Google. Please use the Google
+            button above to sign in.
+          </p>
+        </div>
+      )}
 
       {/* Sign up link */}
       <p className='mt-4 text-center text-sm text-muted-foreground'>

@@ -13,7 +13,7 @@ import {
   IconTrendingUp,
   IconCurrencyDollar,
   IconRefresh,
-  IconLoader2,
+  // IconLoader2, // Used in commented-out plan override
   IconSearch,
   IconChevronLeft,
   IconChevronRight
@@ -23,17 +23,18 @@ import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
+// Plan override disabled — imports kept for future re-enable
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue
+// } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import apiClient from '@/lib/api-client';
 import { cn } from '@/lib/utils';
-import { trackPlanUpdatedByAdmin } from '@/lib/analytics';
+// import { trackPlanUpdatedByAdmin } from '@/lib/analytics';
 import { useAuthStore } from '@/stores/auth.store';
 import type { User, ApiErrorResponse } from '@/types/auth';
 
@@ -325,7 +326,7 @@ export default function AdminPage() {
   const PER_PAGE = 20;
 
   // Plan update state
-  const [updatingUser, setUpdatingUser] = useState<string | null>(null);
+  // const [updatingUser, setUpdatingUser] = useState<string | null>(null);
 
   // Timer refs
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -483,43 +484,40 @@ export default function AdminPage() {
     setPage(1);
   }, [search]);
 
-  // ── Plan override handler ──────────────────────────
-
-  async function handlePlanChange(
-    userId: string,
-    newPlan: 'FREE' | 'CREATOR',
-    oldPlan: 'FREE' | 'CREATOR'
-  ) {
-    // Optimistic update
-    setAllUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, plan: newPlan } : u))
-    );
-    setUpdatingUser(userId);
-
-    try {
-      await apiClient.patch(`/admin/users/${userId}/plan`, {
-        plan: newPlan
-      });
-      toast.success(`Plan updated to ${newPlan}`);
-      try {
-        if (adminUser?.id) {
-          trackPlanUpdatedByAdmin(adminUser.id, userId, newPlan, oldPlan);
-        }
-      } catch {}
-      fetchStats();
-    } catch (error) {
-      // Revert on failure
-      setAllUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, plan: oldPlan } : u))
-      );
-      const msg =
-        (error as AxiosError<ApiErrorResponse>).response?.data?.message?.[0] ||
-        'Failed to update plan';
-      toast.error(msg);
-    } finally {
-      setUpdatingUser(null);
-    }
-  }
+  // ── Plan override handler (disabled — plan changes handled by Stripe) ──
+  //
+  // async function handlePlanChange(
+  //   userId: string,
+  //   newPlan: 'FREE' | 'CREATOR',
+  //   oldPlan: 'FREE' | 'CREATOR'
+  // ) {
+  //   setAllUsers((prev) =>
+  //     prev.map((u) => (u.id === userId ? { ...u, plan: newPlan } : u))
+  //   );
+  //   setUpdatingUser(userId);
+  //   try {
+  //     await apiClient.patch(`/admin/users/${userId}/plan`, {
+  //       plan: newPlan
+  //     });
+  //     toast.success(`Plan updated to ${newPlan}`);
+  //     try {
+  //       if (adminUser?.id) {
+  //         trackPlanUpdatedByAdmin(adminUser.id, userId, newPlan, oldPlan);
+  //       }
+  //     } catch {}
+  //     fetchStats();
+  //   } catch (error) {
+  //     setAllUsers((prev) =>
+  //       prev.map((u) => (u.id === userId ? { ...u, plan: oldPlan } : u))
+  //     );
+  //     const msg =
+  //       (error as AxiosError<ApiErrorResponse>).response?.data?.message?.[0] ||
+  //       'Failed to update plan';
+  //     toast.error(msg);
+  //   } finally {
+  //     setUpdatingUser(null);
+  //   }
+  // }
 
   // ── Render ─────────────────────────────────────────
 
@@ -700,9 +698,10 @@ export default function AdminPage() {
                     <th className='px-5 py-3 text-left font-mono text-xs uppercase tracking-wider text-muted-foreground'>
                       Joined
                     </th>
-                    <th className='px-5 py-3 text-left font-mono text-xs uppercase tracking-wider text-muted-foreground'>
+                    {/* Actions column disabled — plan changes handled by Stripe */}
+                    {/* <th className='px-5 py-3 text-left font-mono text-xs uppercase tracking-wider text-muted-foreground'>
                       Actions
-                    </th>
+                    </th> */}
                   </tr>
                 </thead>
                 <tbody>
@@ -776,8 +775,8 @@ export default function AdminPage() {
                         </span>
                       </td>
 
-                      {/* Actions — plan override */}
-                      <td className='px-5 py-3'>
+                      {/* Actions — plan override (disabled — plan changes handled by Stripe) */}
+                      {/* <td className='px-5 py-3'>
                         <div className='relative'>
                           <Select
                             value={user.plan || 'FREE'}
@@ -803,7 +802,7 @@ export default function AdminPage() {
                             </SelectContent>
                           </Select>
                         </div>
-                      </td>
+                      </td> */}
                     </tr>
                     </React.Fragment>
                     );

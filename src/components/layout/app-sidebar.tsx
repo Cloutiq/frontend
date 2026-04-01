@@ -9,7 +9,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail
+  SidebarRail,
+  useSidebar
 } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -22,6 +23,7 @@ import { Icons } from '../icons';
 export default function AppSidebar() {
   const pathname = usePathname();
   const { user } = useAuthStore();
+  const { isMobile, setOpenMobile } = useSidebar();
   const isAdmin = user?.role === 'ADMIN';
 
   const allItems = isAdmin
@@ -126,16 +128,18 @@ export default function AppSidebar() {
             </SidebarMenu>
           </>
         )}
-        <div className='flex gap-3 px-3 pb-2'>
+        <div className='flex gap-3 px-3 pb-2 group-data-[collapsible=icon]:hidden'>
           <Link
             href='/terms'
             className='text-[11px] text-muted-foreground hover:text-foreground'
+            onClick={() => isMobile && setOpenMobile(false)}
           >
             Terms
           </Link>
           <Link
             href='/privacy'
             className='text-[11px] text-muted-foreground hover:text-foreground'
+            onClick={() => isMobile && setOpenMobile(false)}
           >
             Privacy
           </Link>

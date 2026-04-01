@@ -340,23 +340,29 @@ function SubscriptionSection({
       package_type: 'paid',
       value: 10
     });
+    setLoading(true);
     try {
-      const res = await apiClient.post<ApiSuccessResponse<{ url: string }>>(
-        '/api/create-checkout'
-      );
-      pushToDataLayer({
-        event: 'begin_checkout',
-        event_id: generateEventId('checkout'),
-        value: 10,
-        currency: 'USD',
-        payment_provider: 'stripe'
-      });
-      window.location.href = res.data.data.url;
+      const res = await apiClient.post('/api/create-checkout');
+      const checkoutUrl = res.data?.data?.checkoutUrl || res.data?.data?.url;
+      if (checkoutUrl) {
+        pushToDataLayer({
+          event: 'begin_checkout',
+          event_id: generateEventId('checkout'),
+          value: 10,
+          currency: 'USD',
+          payment_provider: 'stripe'
+        });
+        window.location.href = checkoutUrl;
+      } else {
+        toast.error('Could not create checkout session');
+        setLoading(false);
+      }
     } catch (error) {
       const msg =
         (error as AxiosError<ApiErrorResponse>).response?.data?.message?.[0] ||
         'Failed to start checkout';
       toast.error(msg);
+      setLoading(false);
     }
   }
 
@@ -429,8 +435,15 @@ function SubscriptionSection({
             </Badge>
             <span className='text-sm text-muted-foreground'>3 analyses/month</span>
           </div>
-          <Button size='sm' className='w-fit' onClick={handleUpgrade}>
-            Upgrade to Creator — $10/month
+          <Button size='sm' className='w-fit' onClick={handleUpgrade} disabled={loading}>
+            {loading ? (
+              <>
+                <IconLoader2 className='mr-2 size-4 animate-spin' />
+                Redirecting...
+              </>
+            ) : (
+              'Upgrade to Creator — $10/month'
+            )}
           </Button>
           <p className='text-[11px] text-muted-foreground'>
             By subscribing you agree to our{' '}
