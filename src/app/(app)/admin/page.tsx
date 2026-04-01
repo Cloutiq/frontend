@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { toast } from 'sonner';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { AxiosError } from 'axios';
 import {
   IconUsers,
@@ -13,7 +12,6 @@ import {
   IconTrendingUp,
   IconCurrencyDollar,
   IconRefresh,
-  // IconLoader2, // Used in commented-out plan override
   IconSearch,
   IconChevronLeft,
   IconChevronRight
@@ -23,20 +21,10 @@ import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-// Plan override disabled — imports kept for future re-enable
-// import {
-//   Select,
-//   SelectContent,
-//   SelectItem,
-//   SelectTrigger,
-//   SelectValue
-// } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import apiClient from '@/lib/api-client';
 import { cn } from '@/lib/utils';
-// import { trackPlanUpdatedByAdmin } from '@/lib/analytics';
-import { useAuthStore } from '@/stores/auth.store';
-import type { User, ApiErrorResponse } from '@/types/auth';
+import type { ApiErrorResponse } from '@/types/auth';
 
 // ── Types ──────────────────────────────────────────────
 
@@ -55,15 +43,24 @@ interface RevenueData {
   currency: string;
 }
 
-interface MergedUser {
+interface AdminUser {
   id: string;
   name: string;
   email: string;
   role: 'ADMIN' | 'USER';
   plan: 'FREE' | 'CREATOR' | null;
   analysesThisMonth: number;
+  totalAnalyses: number;
+  subscriptionStatus: 'active' | 'canceling' | null;
   createdAt: string;
-  isRecent: boolean;
+  isRecent?: boolean;
+}
+
+interface UsersMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
 // ── Helpers ────────────────────────────────────────────
@@ -195,14 +192,26 @@ function TableSkeleton() {
 
 // ── Plan Badge ─────────────────────────────────────────
 
-function PlanBadge({ plan }: { plan: 'FREE' | 'CREATOR' }) {
+function PlanBadge({
+  plan,
+  subscriptionStatus
+}: {
+  plan: 'FREE' | 'CREATOR';
+  subscriptionStatus?: 'active' | 'canceling' | null;
+}) {
   if (plan === 'CREATOR') {
+    const isCanceling = subscriptionStatus === 'canceling';
     return (
       <Badge
         variant='outline'
-        className='border-cyan-500/50 bg-cyan-500/[0.08] font-mono text-xs text-cyan-400'
+        className={cn(
+          'font-mono text-xs',
+          isCanceling
+            ? 'border-amber-500/50 bg-amber-500/[0.08] text-amber-400'
+            : 'border-cyan-500/50 bg-cyan-500/[0.08] text-cyan-400'
+        )}
       >
-        CREATOR
+        CREATOR{isCanceling ? ' (canceling)' : ''}
       </Badge>
     );
   }
@@ -298,12 +307,10 @@ function PlanDistribution({
 // ── Main Page ──────────────────────────────────────────
 
 export default function AdminPage() {
-  const adminUser = useAuthStore((s) => s.user);
-
   // Data state
   const [stats, setStats] = useState<AdminStats | null>(null);
-  const [recentIds, setRecentIds] = useState<Set<string>>(new Set());
-  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [usersMeta, setUsersMeta] = useState<UsersMeta | null>(null);
   const [revenue, setRevenue] = useState<RevenueData | null>(null);
 
   // Loading state
@@ -322,15 +329,14 @@ export default function AdminPage() {
 
   // Table state
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const PER_PAGE = 20;
-
-  // Plan update state
-  // const [updatingUser, setUpdatingUser] = useState<string | null>(null);
 
   // Timer refs
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Fetch functions ────────────────────────────────
 
@@ -351,25 +357,21 @@ export default function AdminPage() {
     }
   }, []);
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async (p: number = 1, q: string = '') => {
     setUsersLoading(true);
     setUsersError(null);
     try {
-      // Fetch recent signups + all users in parallel
-      const [recentRes, allRes] = await Promise.all([
-        apiClient.get('/admin/recent-signups'),
-        apiClient.get('/users')
-      ]);
+      const params: Record<string, string | number> = {
+        page: p,
+        limit: PER_PAGE
+      };
+      if (q.trim()) params.search = q.trim();
 
-      // Recent signups — extract IDs
-      const recentData = recentRes.data?.data || recentRes.data;
-      const recentList = Array.isArray(recentData) ? recentData : [];
-      setRecentIds(new Set(recentList.map((u: { id: string }) => u.id)));
-
-      // All users — filter out ADMIN
-      const allData = allRes.data?.data || allRes.data;
-      const userList: User[] = (allData?.results || allData || []);
-      setAllUsers(userList.filter((u) => u.role !== 'ADMIN'));
+      const res = await apiClient.get('/admin/users', { params });
+      const data = res.data?.data || res.data;
+      const userList: AdminUser[] = data?.data || data?.results || [];
+      setUsers(userList.filter((u) => u.role !== 'ADMIN'));
+      setUsersMeta(data?.meta || null);
     } catch (error) {
       const msg =
         (error as AxiosError<ApiErrorResponse>).response?.data?.message?.[0] ||
@@ -394,10 +396,10 @@ export default function AdminPage() {
   }, []);
 
   const fetchAll = useCallback(async () => {
-    await Promise.all([fetchStats(), fetchUsers(), fetchRevenue()]);
+    await Promise.all([fetchStats(), fetchUsers(page, debouncedSearch), fetchRevenue()]);
     setLastUpdated(new Date());
     setElapsed(0);
-  }, [fetchStats, fetchUsers, fetchRevenue]);
+  }, [fetchStats, fetchUsers, fetchRevenue, page, debouncedSearch]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -429,95 +431,25 @@ export default function AdminPage() {
     };
   }, [fetchAll]);
 
-  // ── Merged user list: recent first, then rest ──────
+  // ── Debounced search ────────────────────────────────
 
-  const mergedUsers: MergedUser[] = useMemo(() => {
-    const recent: MergedUser[] = [];
-    const rest: MergedUser[] = [];
-
-    for (const u of allUsers) {
-      const merged: MergedUser = {
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        role: u.role,
-        plan: u.plan,
-        analysesThisMonth: u.analysesThisMonth,
-        createdAt: u.createdAt,
-        isRecent: recentIds.has(u.id)
-      };
-      if (merged.isRecent) {
-        recent.push(merged);
-      } else {
-        rest.push(merged);
-      }
-    }
-
-    // Sort recent by createdAt desc (newest first)
-    recent.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    // Sort rest by createdAt desc too
-    rest.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    return [...recent, ...rest];
-  }, [allUsers, recentIds]);
-
-  // ── Filtered + paginated ───────────────────────────
-
-  const filteredUsers = useMemo(() => {
-    if (!search.trim()) return mergedUsers;
-    const q = search.toLowerCase();
-    return mergedUsers.filter(
-      (u) =>
-        u.name.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q)
-    );
-  }, [mergedUsers, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PER_PAGE));
-  const paginatedUsers = filteredUsers.slice(
-    (page - 1) * PER_PAGE,
-    page * PER_PAGE
-  );
-
-  // Reset page when search changes
   useEffect(() => {
-    setPage(1);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [search]);
 
-  // ── Plan override handler (disabled — plan changes handled by Stripe) ──
-  //
-  // async function handlePlanChange(
-  //   userId: string,
-  //   newPlan: 'FREE' | 'CREATOR',
-  //   oldPlan: 'FREE' | 'CREATOR'
-  // ) {
-  //   setAllUsers((prev) =>
-  //     prev.map((u) => (u.id === userId ? { ...u, plan: newPlan } : u))
-  //   );
-  //   setUpdatingUser(userId);
-  //   try {
-  //     await apiClient.patch(`/admin/users/${userId}/plan`, {
-  //       plan: newPlan
-  //     });
-  //     toast.success(`Plan updated to ${newPlan}`);
-  //     try {
-  //       if (adminUser?.id) {
-  //         trackPlanUpdatedByAdmin(adminUser.id, userId, newPlan, oldPlan);
-  //       }
-  //     } catch {}
-  //     fetchStats();
-  //   } catch (error) {
-  //     setAllUsers((prev) =>
-  //       prev.map((u) => (u.id === userId ? { ...u, plan: oldPlan } : u))
-  //     );
-  //     const msg =
-  //       (error as AxiosError<ApiErrorResponse>).response?.data?.message?.[0] ||
-  //       'Failed to update plan';
-  //     toast.error(msg);
-  //   } finally {
-  //     setUpdatingUser(null);
-  //   }
-  // }
+  // Fetch users when page or search changes
+  useEffect(() => {
+    fetchUsers(page, debouncedSearch);
+  }, [page, debouncedSearch, fetchUsers]);
+
+  const totalPages = usersMeta?.totalPages ?? 1;
 
   // ── Render ─────────────────────────────────────────
 
@@ -637,7 +569,7 @@ export default function AdminPage() {
         />
       )}
 
-      {/* Section 3 — Users Table (merged) */}
+      {/* Section 3 — Users Table */}
       <div className='card-glow'>
         <div className='flex items-center justify-between border-b border-border px-5 py-4'>
           <div>
@@ -645,8 +577,8 @@ export default function AdminPage() {
               Users
             </h3>
             <p className='text-xs text-muted-foreground'>
-              {filteredUsers.length} users{' '}
-              {search && `matching "${search}"`}
+              {usersMeta ? `${usersMeta.total} users` : '\u2014'}{' '}
+              {debouncedSearch && `matching "${debouncedSearch}"`}
             </p>
           </div>
           <div className='relative w-64'>
@@ -660,24 +592,24 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {usersLoading && allUsers.length === 0 ? (
+        {usersLoading && users.length === 0 ? (
           <TableSkeleton />
-        ) : usersError && allUsers.length === 0 ? (
+        ) : usersError && users.length === 0 ? (
           <div className='p-8 text-center'>
             <p className='text-sm text-muted-foreground'>{usersError}</p>
             <Button
               variant='outline'
               size='sm'
               className='mt-3'
-              onClick={fetchUsers}
+              onClick={() => fetchUsers(page, debouncedSearch)}
             >
               Retry
             </Button>
           </div>
-        ) : filteredUsers.length === 0 ? (
+        ) : users.length === 0 ? (
           <div className='p-8 text-center'>
             <p className='text-sm text-muted-foreground'>
-              {search ? 'No users match your search' : 'No users yet'}
+              {debouncedSearch ? 'No users match your search' : 'No users yet'}
             </p>
           </div>
         ) : (
@@ -687,76 +619,59 @@ export default function AdminPage() {
                 <thead>
                   <tr className='border-b border-border'>
                     <th className='px-5 py-3 text-left font-mono text-xs uppercase tracking-wider text-muted-foreground'>
-                      User
+                      Name
+                    </th>
+                    <th className='px-5 py-3 text-left font-mono text-xs uppercase tracking-wider text-muted-foreground'>
+                      Email
                     </th>
                     <th className='px-5 py-3 text-left font-mono text-xs uppercase tracking-wider text-muted-foreground'>
                       Plan
                     </th>
                     <th className='px-5 py-3 text-left font-mono text-xs uppercase tracking-wider text-muted-foreground'>
-                      Usage
+                      This Month
+                    </th>
+                    <th className='px-5 py-3 text-left font-mono text-xs uppercase tracking-wider text-muted-foreground'>
+                      Total
                     </th>
                     <th className='px-5 py-3 text-left font-mono text-xs uppercase tracking-wider text-muted-foreground'>
                       Joined
                     </th>
-                    {/* Actions column disabled — plan changes handled by Stripe */}
-                    {/* <th className='px-5 py-3 text-left font-mono text-xs uppercase tracking-wider text-muted-foreground'>
-                      Actions
-                    </th> */}
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedUsers.map((user, i) => {
-                    const prev = i > 0 ? paginatedUsers[i - 1] : null;
-                    const showDivider = !search && prev?.isRecent && !user.isRecent;
-
-                    return (
-                    <React.Fragment key={user.id}>
-                    {showDivider && (
-                      <tr>
-                        <td colSpan={5} className='px-5 py-0'>
-                          <div className='flex items-center gap-3 py-2'>
-                            <div className='h-px flex-1 bg-border' />
-                            <span className='font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60'>
-                              Recent signups above &middot; All users below
-                            </span>
-                            <div className='h-px flex-1 bg-border' />
-                          </div>
-                        </td>
-                      </tr>
-                    )}
+                  {users.map((user) => (
                     <tr
+                      key={user.id}
                       className='h-14 border-b border-border/50 last:border-0 hover:bg-card/50'
                     >
-                      {/* User */}
+                      {/* Name */}
                       <td className='px-5 py-3'>
                         <div className='flex items-center gap-3'>
-                          <div className='flex size-8 items-center justify-center rounded-[4px] bg-[#38bdf8]/20 font-mono text-sm font-medium text-[#38bdf8]'>
+                          <div className='flex size-8 shrink-0 items-center justify-center rounded-[4px] bg-[#38bdf8]/20 font-mono text-sm font-medium text-[#38bdf8]'>
                             {user.name?.charAt(0)?.toUpperCase() || '?'}
                           </div>
-                          <div>
-                            <div className='flex items-center gap-2'>
-                              <p className='text-sm font-medium text-foreground'>
-                                {user.name}
-                              </p>
-                              {user.isRecent && (
-                                <span className='rounded-[3px] bg-[#16a34a]/15 px-1.5 py-0.5 font-mono text-[9px] font-medium uppercase tracking-wider text-[#16a34a]'>
-                                  New
-                                </span>
-                              )}
-                            </div>
-                            <p className='font-mono text-xs text-muted-foreground'>
-                              {user.email}
-                            </p>
-                          </div>
+                          <p className='text-sm font-medium text-foreground'>
+                            {user.name}
+                          </p>
                         </div>
+                      </td>
+
+                      {/* Email */}
+                      <td className='px-5 py-3'>
+                        <p className='font-mono text-xs text-muted-foreground'>
+                          {user.email}
+                        </p>
                       </td>
 
                       {/* Plan badge */}
                       <td className='px-5 py-3'>
-                        <PlanBadge plan={(user.plan as 'FREE' | 'CREATOR') || 'FREE'} />
+                        <PlanBadge
+                          plan={(user.plan as 'FREE' | 'CREATOR') || 'FREE'}
+                          subscriptionStatus={user.subscriptionStatus}
+                        />
                       </td>
 
-                      {/* Usage */}
+                      {/* This Month */}
                       <td className='px-5 py-3'>
                         <span
                           className={cn(
@@ -764,7 +679,14 @@ export default function AdminPage() {
                             getUsageColor(user.analysesThisMonth)
                           )}
                         >
-                          {user.analysesThisMonth} analyses
+                          {user.analysesThisMonth}
+                        </span>
+                      </td>
+
+                      {/* Total */}
+                      <td className='px-5 py-3'>
+                        <span className='font-mono text-sm text-muted-foreground'>
+                          {user.totalAnalyses ?? 0}
                         </span>
                       </td>
 
@@ -774,69 +696,40 @@ export default function AdminPage() {
                           {format(new Date(user.createdAt), 'MMM d, yyyy')}
                         </span>
                       </td>
-
-                      {/* Actions — plan override (disabled — plan changes handled by Stripe) */}
-                      {/* <td className='px-5 py-3'>
-                        <div className='relative'>
-                          <Select
-                            value={user.plan || 'FREE'}
-                            onValueChange={(val) =>
-                              handlePlanChange(
-                                user.id,
-                                val as 'FREE' | 'CREATOR',
-                                (user.plan as 'FREE' | 'CREATOR') || 'FREE'
-                              )
-                            }
-                            disabled={updatingUser === user.id}
-                          >
-                            <SelectTrigger className='h-7 w-[100px] text-xs'>
-                              {updatingUser === user.id ? (
-                                <IconLoader2 className='size-3 animate-spin' />
-                              ) : (
-                                <SelectValue />
-                              )}
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value='FREE'>FREE</SelectItem>
-                              <SelectItem value='CREATOR'>CREATOR</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </td> */}
                     </tr>
-                    </React.Fragment>
-                    );
-                  })}
+                  ))}
                 </tbody>
               </table>
             </div>
 
             {/* Pagination */}
-            <div className='flex items-center justify-between border-t border-border px-5 py-3'>
-              <p className='font-mono text-xs text-muted-foreground'>
-                Page {page} of {totalPages} &middot; {filteredUsers.length} total users
-              </p>
-              <div className='flex items-center gap-2'>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  <IconChevronLeft className='size-4' />
-                  Previous
-                </Button>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                  <IconChevronRight className='size-4' />
-                </Button>
+            {usersMeta && (
+              <div className='flex items-center justify-between border-t border-border px-5 py-3'>
+                <p className='font-mono text-xs text-muted-foreground'>
+                  Page {page} of {totalPages} &middot; {usersMeta.total} total users
+                </p>
+                <div className='flex items-center gap-2'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => p - 1)}
+                  >
+                    <IconChevronLeft className='size-4' />
+                    Previous
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                    <IconChevronRight className='size-4' />
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
       </div>
