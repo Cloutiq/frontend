@@ -19,7 +19,7 @@ export function setAuthCookies(role: string) {
 
 export function setRefreshTokenCookie(refreshToken: string) {
   if (typeof document === 'undefined') return;
-  document.cookie = `${REFRESH_TOKEN_COOKIE}=${refreshToken}; path=/; max-age=604800; SameSite=Strict`;
+  document.cookie = `${REFRESH_TOKEN_COOKIE}=${refreshToken}; path=/; max-age=604800; SameSite=Lax`;
 }
 
 export function getRefreshTokenCookie(): string | null {
@@ -44,8 +44,8 @@ export function clearAuthCookies() {
   document.cookie = `${AUTH_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
   document.cookie = `${ROLE_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
   document.cookie = `${MUST_CHANGE_COOKIE}=; path=/; max-age=0`;
-  // Must match the SameSite=Strict used when setting the RT cookie
-  document.cookie = `${REFRESH_TOKEN_COOKIE}=; path=/; max-age=0; SameSite=Strict`;
+  // Must match the SameSite=Lax used when setting the RT cookie
+  document.cookie = `${REFRESH_TOKEN_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
 }
 
 export const AUTH_COOKIE_NAME = AUTH_COOKIE;

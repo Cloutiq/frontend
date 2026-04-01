@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { getRefreshTokenCookie } from '@/lib/auth-cookie';
+import { AUTH_COOKIE_NAME } from '@/lib/auth-cookie';
 
 const decorativeScores = [
   { label: 'HOOK', value: 92 },
@@ -28,8 +28,12 @@ export function AuthLayout({ children }: AuthLayoutProps) {
   // If user is already authenticated, redirect away from auth pages.
   // This is a client-side safety net (middleware handles it server-side).
   useEffect(() => {
-    const rt = getRefreshTokenCookie();
-    if (rt) {
+    // Check the lightweight auth flag cookie (SameSite=Lax, always available).
+    // Don't read cloutiq_rt here — we only need to know "is logged in?", not the token value.
+    const authCookie = document.cookie.match(
+      new RegExp(`(?:^|; )${AUTH_COOKIE_NAME}=([^;]*)`)
+    );
+    if (authCookie?.[1] === '1') {
       setRedirecting(true);
       const roleCookie = document.cookie.match(/(?:^|; )cloutiq_role=([^;]*)/);
       const dest = roleCookie?.[1] === 'ADMIN' ? '/admin' : '/dashboard';
